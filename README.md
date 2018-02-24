@@ -8,18 +8,9 @@ DataBolt provides tools to reduce the time it takes to get your data ready for e
 
 ## Features Overview 
 
-### File Combiner
-
-Automatically combine multiple files into one by stacking them together. Works for .xls, .csv, .txt.
-
-### Smart Join
-
-Easily join different datasets without writing custom code. Does fuzzy and time-series aware joins.
-*coming soon*
-
 ## File Combiner
 
-Automatically combine multiple files into one by stacking them together
+Automatically combine multiple files into one by stacking them together. Works for .xls, .csv, .txt.
 
 ![](https://www.databolt.tech/images/combiner-landing-small.png)
 
@@ -32,6 +23,11 @@ Example features include
 * Excel to CSV converter (incl multi-sheet support)
 * Out of core functionality
 * Export to CSV or pandas dataframe
+
+## Smart Join
+
+Easily join different datasets without writing custom code. Does fuzzy and time-series aware joins.
+*coming soon*
 
 ## Documentation
 
