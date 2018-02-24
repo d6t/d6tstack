@@ -177,18 +177,21 @@ def combine_files(fname_list, fname_out_folder, log_pusher, fname_out_base='comb
     
     if not 'columns_select_mode' in cfg_settings:
         log_pusher.send_log('determine columns mode','ok')
-        col_files, col_all, col_common, is_columns_all_equal, df_col, df_col_json = combiner.preview_columns()
+        
+        col_preview = combiner.preview_columns()
         # todo: cache the preview dfs somehow? reading the same in next step
         
         cfg_settings['columns']={}
-        cfg_settings['columns']['col_files'] = col_files
-        cfg_settings['columns']['col_all'] = col_all
-        cfg_settings['columns']['col_common'] = col_common
-        cfg_settings['columns']['is_columns_all_equal'] = is_columns_all_equal
+        cfg_settings['columns']['col_files'] = col_preview['files_columns']
+        cfg_settings['columns']['col_all'] = col_preview['columns_all']
+        cfg_settings['columns']['col_common'] = col_preview['columns_common']
+        cfg_settings['columns']['is_columns_all_equal'] = col_preview['is_all_equal']
+        df_col_present_json = col_preview['df_columns_present'].reset_index(drop=True).to_json(orient='records')
+        df_col_order_json = col_preview['df_columns_order'].reset_index(drop=True).to_json(orient='records')
 
-        if not is_columns_all_equal:
+        if not col_preview['is_all_equal']:
             log_pusher.send_log('column mismatch detected','ok')
-            col_data = column_mismatch_dict(col_files)
+            col_data = column_mismatch_dict(col_preview['files_columns'])
             cfg_settings['columns_all_equal'] = False
             return {**{'status': 'need_columns', 'settings': cfg_settings}, **col_data}
         else:

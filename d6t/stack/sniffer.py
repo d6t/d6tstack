@@ -1,16 +1,15 @@
-import os
-import ntpath
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+Finds CSV settings and Excel sheets in multiple files. Often needed as input for stacking
+
+"""
 import collections
 import csv
 
-import numpy as np
-import pandas as pd
-
-from .helpers import *
-from .helpers_ui import *
-
 #******************************************************************
-# sniffer
+# csv
 #******************************************************************
 
 def csv_count_rows(fname):
@@ -26,6 +25,16 @@ def csv_count_rows(fname):
     return nrows
 
 class CSVSniffer(object):
+    """
+    
+    Automatically detects settings needed to read csv files. SINGLE file only, for MULTI file use CSVSnifferList
+
+    Args:
+        fname (string): file path
+        nlines (int): number of lines to sample from each file
+        delims (string): possible delimiters, default ',;\t|'
+
+    """
 
     def __init__(self, fname, nlines = 10, delims=',;\t|'):
         self.cfg_fname = fname
@@ -131,10 +140,21 @@ class CSVSniffer(object):
         return not self.is_all_rows_number_col
 
 class CSVSnifferList(object):
+    """
+    
+    Automatically detects settings needed to read csv files. MULTI file use
 
-    def __init__(self, fname_list):
+    Args:
+        fname_list (list): file names, eg ['a.csv','b.csv']
+        nlines (int): number of lines to sample from each file
+        delims (string): possible delimiters, default ',;\t|'
+
+    """
+
+
+    def __init__(self, fname_list, nlines = 10, delims=',;\t|'):
         self.cfg_fname_list = fname_list
-        self.sniffers = [CSVSniffer(fname) for fname in fname_list]
+        self.sniffers = [CSVSniffer(fname, nlines, delims) for fname in fname_list]
 
     def get_all(self, fun_name, msg_error):
         val = []
@@ -157,142 +177,72 @@ class CSVSnifferList(object):
     def has_header(self):
         return self.get_all('has_header','Inconsistent header setting detected!')
 
-        # todo: check for column consistency
         # todo: propagate status of individual sniffers. instead of raising exception pass back status to get user input
 
 
 #******************************************************************
-# combiner
+# xls
 #******************************************************************
 
-def sniff_settings_csv(fname_list):
-    sniff = CSVSnifferList(fname_list)
-    csv_sniff = {}
-    csv_sniff['delim'] = sniff.get_delim()
-    csv_sniff['skiprows'] = sniff.count_skiprows()
-    csv_sniff['has_header'] = sniff.has_header()
-    csv_sniff['header'] = 0 if sniff.has_header() else None
-    return csv_sniff
+class XLSSniffer(object):
+    """
+    
+    Extracts available sheets from MULTIPLE Excel files
 
-class CombinerCSV(object):
+    Args:
+        fname_list (list): file names, eg ['a.csv','b.csv']
+        logger (object): optional logger to log events to
 
-    def __init__(self, fname_list, sep=',', all_strings = False, header_row = 0, skiprows=0, nrows_preview=5, logger=None):
+    """
+
+    def __init__(self, fname_list, logger=None):
         self.fname_list = fname_list
-        self.sep = sep
-        self.all_strings = all_strings
-        self.header_row = header_row
-        self.skiprows=skiprows
-        self.nrows_preview = nrows_preview
         self.logger = logger
+        check_valid_xls(self.fname_list)
+        self.scan()
 
-    def read_csv(self, fname, is_preview=False, chunksize=None):
-        cfg_dype = str if self.all_strings else None
-        cfg_nrows = self.nrows_preview if is_preview else None
-        return pd.read_csv(fname, dtype=cfg_dype, sep=self.sep, header=self.header_row, skiprows=self.skiprows, nrows=cfg_nrows, chunksize=chunksize)
+    def scan(self):
 
-    def read_csv_all(self, msg=None, is_preview=False, chunksize=None, cfg_col_sel=None, cfg_col_rename={}):
-        dfl_all = []
+        xls_sheets = {}
         for fname in self.fname_list:
-            if self.logger and msg:
-                self.logger.send_log(msg+' '+ntpath.basename(fname),'ok')
-            df=self.read_csv(fname, is_preview=is_preview, chunksize=chunksize)
-            df['filename'] = ntpath.basename(fname)
-            if cfg_col_sel:
-                df = df.reindex(columns=['filename']+cfg_col_sel)
-            df = df.rename(columns=cfg_col_rename)
-            dfl_all.append(df)
+            if self.logger:
+                self.logger.send_log('sniffing sheets in '+ntpath.basename(fname),'ok')
 
-        return dfl_all
+            xls_fname = {}
+            xls_fname['file_name'] = ntpath.basename(fname)
+            if fname[-5:]=='.xlsx':
+                fh = openpyxl.load_workbook(fname,read_only=True)
+                xls_fname['sheets_names'] = fh.sheetnames
+                # todo: need to close file?
+            elif fname[-4:]=='.xls':
+                fh = xlrd.open_workbook(fname, on_demand=True)
+                xls_fname['sheets_names'] = fh.sheet_names()
+                fh.release_resources()
+            else:
+                raise IOError('Only .xls or .xlsx files can be combined')
 
+            xls_fname['sheets_count'] = len(xls_fname['sheets_names'])
+            xls_fname['sheets_idx'] = np.arange(xls_fname['sheets_count']).tolist()
+            xls_sheets[fname] = xls_fname
 
-    def preview_columns(self):
-        
-        dfl_all = self.read_csv_all(msg='scanning colums of', is_preview=True)
+            self.xls_sheets = xls_sheets
 
-        dfl_all_col = [df.columns.tolist() for df in dfl_all]
-        [df.remove('filename') for df in dfl_all_col]
-        col_files = dict(zip(self.fname_list, dfl_all_col))
-        col_common = list_common(list(col_files.values()))
-        col_all = list_unique(list(col_files.values()))
+        df_xls_sheets = pd.DataFrame(xls_sheets).T
+        df_xls_sheets.index.names = ['file_path']
 
-        df_col = {}
-        for iFileName,iFileCol in col_files.items():
-                df_col[iFileName]=[ntpath.basename(iFileName),]+[iCol in iFileCol for iCol in col_all]
-                
-        df_col = pd.DataFrame(df_col,index=['filename']+col_all).T
-        df_col.index.names = ['file_path']
-        df_col_json = df_col.reset_index(drop=True).to_json(orient='records')
-                    
-        return col_files, col_all, col_common, columns_all_equal(dfl_all_col), df_col, df_col_json
+        self.dict_xls_sheets = xls_sheets
+        self.df_xls_sheets = df_xls_sheets
 
+    def all_contain_sheet(self,sheet_name):
+        return np.all([sheet_name in self.dict_xls_sheets[fname]['sheets_names'] for fname in self.fname_list])
 
-    def combine_preview(self, cfg_col_mode='all'):
-        return self.combine(cfg_col_mode, is_preview=True)
+    def all_have_idx(self,sheet_idx):
+        return np.all([sheet_idx<=d['sheets_count'] for d in self.dict_xls_sheets])
 
+    def all_same_count(self):
+        return np.all([self.dict_xls_sheets[0]['sheets_count']==d['sheets_count'] for d in self.dict_xls_sheets])
 
-    def combine(self, cfg_col_mode='all', is_preview=False):
-        dfl_all = self.read_csv_all('reading full file')
+    def all_same_names(self):
+        return np.all([self.dict_xls_sheets[0]['sheets_names']==d['sheets_names'] for d in self.dict_xls_sheets])
 
-        if self.logger:
-            self.logger.send_log('combining files','ok')
-
-        if cfg_col_mode == 'all':
-            df_all = pd.concat(dfl_all)
-        elif cfg_col_mode == 'common':
-            df_all = pd.concat(dfl_all,join='inner')
-        else:
-            raise ValueError('invalid columns_select_mode')
-            
-        return df_all
-
-
-class CombinerCSVAdvanced(object):
-
-    def __init__(self, combiner, cfg_col_sel, cfg_col_rename={}):
-        self.combiner = combiner
-        self.cfg_col_sel = cfg_col_sel 
-        self.cfg_col_rename = cfg_col_rename
-
-    def combine_preview(self):
-        df_all = self.combiner.read_csv_all(msg='reading preview file', is_preview=True, cfg_col_sel=self.cfg_col_sel, cfg_col_rename=self.cfg_col_rename)
-        df_all = pd.concat(df_all)
-        return df_all
-
-    def combine_preview_save(self, fname_out):
-        df_all_preview = self.combine_preview()
-        df_all_preview.to_csv(fname_out,index=False)
-        return True
-
-
-    def combine(self):
-        df_all = self.combiner.read_csv_all(msg='reading full file', cfg_col_sel=self.cfg_col_sel, cfg_col_rename=self.cfg_col_rename)
-        df_all = pd.concat(df_all)
-        return df_all
-
-
-    def combine_save(self, fname_out):
-        cfg_dype = str if self.combiner.all_strings else None
-        cfg_col_sel = ['filename']+self.cfg_col_sel
-
-        if not os.path.exists(os.path.dirname(fname_out)):
-            os.makedirs(os.path.dirname(fname_out))
-            
-        fhandle = open(fname_out,'w')
-        
-        # write header
-        df_all_header = pd.DataFrame(columns=cfg_col_sel)
-        df_all_header.to_csv(fhandle,header=True,index=False)
-        # todo: what if file hasn't header
-        
-        for fname in self.combiner.fname_list:
-            if self.combiner.logger:
-                self.combiner.logger.send_log('processing '+ntpath.basename(fname),'ok')
-            for df_chunk in self.combiner.read_csv(fname,chunksize=1e5):
-                df_chunk['filename'] = ntpath.basename(fname)
-                df_chunk = df_chunk.reindex(columns=cfg_col_sel) # todo: only reindex if need be
-                df_chunk = df_chunk.rename(columns=self.cfg_col_rename) # todo: only rename if need be
-                df_chunk.to_csv(fhandle,header=False,index=False)
-                
-        return True
-        
 

@@ -20,9 +20,10 @@ Notes:
 
 """
 
-from .combine_files import *
+from d6t.stack.combine_files import *
 from .helpers import *
 from .combine_csv import *
+from .combine_xls import *
 
 import pandas as pd
 import ntpath
@@ -133,6 +134,22 @@ def create_files_csv_colmismatch2():
     return [cfg_fname % 'jan',cfg_fname % 'feb',cfg_fname % 'mar']
 
 @pytest.fixture(scope="module")
+def create_files_csv_colreorder():
+
+    df1,df2,df3 = create_files_df_clean()
+    cfg_col = [ 'date', 'sales','cost','profit']
+    cfg_col2 = [ 'date', 'sales','profit','cost']
+    
+    # return df1[cfg_col], df2[cfg_col], df3[cfg_col]
+    # save files
+    cfg_fname = cfg_fname_base_in+'input-csv-reorder-%s.csv'
+    df1[cfg_col].to_csv(cfg_fname % 'jan',index=False)
+    df2[cfg_col].to_csv(cfg_fname % 'feb',index=False)
+    df3[cfg_col2].to_csv(cfg_fname % 'mar',index=False)
+
+    return [cfg_fname % 'jan',cfg_fname % 'feb',cfg_fname % 'mar']
+
+@pytest.fixture(scope="module")
 def create_files_csv_noheader():
 
     df1,df2,df3 = create_files_df_clean()
@@ -221,41 +238,9 @@ def test_file_extensions_valid():
     assert not file_extensions_valid(ext_list)
 
 #************************************************************
+#************************************************************
 # combine_csv
 #************************************************************
-
-#************************************************************
-# combine_xls
-#************************************************************
-
-def test_xls_scan_sheets_single(create_files_xls_single,create_files_xlsx_single):
-    def helper(fnames):
-        xlsSniffer = XLSSniffer(fnames)
-        sheets = xlsSniffer.dict_xls_sheets
-        assert np.all([file['sheets_names']==['Sheet1'] for file in sheets.values()])
-        assert np.all([file['sheets_count']==1 for file in sheets.values()])
-    
-    helper(create_files_xls_single)
-    helper(create_files_xlsx_single)
-
-def test_xls_scan_sheets_multipe(create_files_xls_multiple,create_files_xlsx_multiple):
-    def helper(fnames):
-        xlsSniffer = XLSSniffer(fnames)
-        sheets = xlsSniffer.dict_xls_sheets
-        assert np.all([file['sheets_names']==['Sheet1', 'Sheet2'] for file in sheets.values()])
-        assert np.all([file['sheets_count']==2 for file in sheets.values()])
-
-    helper(create_files_xls_multiple)
-    helper(create_files_xlsx_multiple)
-
-#todo: wrong file raises exception NotImplementedError
-
-def test_preview_dict():
-    df = pd.DataFrame({'col1':[0,1],'col2':[0,1]})
-    assert preview_dict(df) == {'columns': ['col1', 'col2'], 'rows': {0: [[0]], 1: [[1]]}}
-
-#************************************************************
-# tests - CSVSniffer
 #************************************************************
 def test_csv_sniff_single(create_files_csv, create_files_csv_noheader):
     sniff = CSVSniffer(create_files_csv[0])
@@ -293,8 +278,98 @@ def test_csv_sniff_multi(create_files_csv, create_files_csv_noheader):
     assert sniff.count_skiprows() == 0
     assert not sniff.has_header()
 
+
+def test_CombinerCSV_columns(create_files_csv, create_files_csv_colmismatch, create_files_csv_colreorder):
+
+    fname_list = create_files_csv
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    col_preview = combiner.preview_columns()
+    # todo: cache the preview dfs somehow? reading the same in next step
+    
+    assert col_preview['is_all_equal']
+    assert col_preview['columns_all']==col_preview['columns_common']
+    assert col_preview['columns_all']==['cost', 'date', 'profit', 'sales']
+
+    fname_list = create_files_csv_colmismatch
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    col_preview = combiner.preview_columns()
+    # todo: cache the preview dfs somehow? reading the same in next step
+    
+    assert not col_preview['is_all_equal']
+    assert not col_preview['columns_all']==col_preview['columns_common']
+    assert col_preview['columns_all']==['cost', 'date', 'profit', 'profit2', 'sales']
+    assert col_preview['columns_common']==['cost', 'date', 'profit', 'sales']
+
+    fname_list = create_files_csv_colreorder
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    col_preview = combiner.preview_columns()
+
+    assert not col_preview['is_all_equal']
+    assert col_preview['columns_all']==col_preview['columns_common']
+
+
+def test_CombinerCSV_combine(create_files_csv, create_files_csv_colmismatch, create_files_csv_colreorder):
+
+    # all columns present
+    fname_list = create_files_csv
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    df = combiner.combine()
+
+    df = df.sort_values('date').drop(['filename'],axis=1)
+    df_chk = create_files_df_clean_combine()
+    assert df.equals(df_chk)
+
+    df = combiner.combine()
+    df = df.groupby('filename').head(combiner.nrows_preview)
+    df_chk = combiner.combine_preview()
+    assert df.equals(df_chk)
+
+    # columns mismatch, all columns
+    fname_list = create_files_csv_colmismatch
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    df = combiner.combine()
+    df = df.sort_values('date').drop(['filename'],axis=1)
+    df_chk = create_files_df_colmismatch_combine(cfg_col_common=False)
+    assert df.shape[1] == df_chk.shape[1]
+
+    # columns mismatch, common columns
+    df = combiner.combine(is_col_common=True)
+    df = df.sort_values('date').drop(['filename'], axis=1)
+    df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
+    assert df.shape[1] == df_chk.shape[1]
+
+
+
+
 #************************************************************
-# tests - combiners
+# combine_xls
+#************************************************************
+
+def test_xls_scan_sheets_single(create_files_xls_single,create_files_xlsx_single):
+    def helper(fnames):
+        xlsSniffer = XLSSniffer(fnames)
+        sheets = xlsSniffer.dict_xls_sheets
+        assert np.all([file['sheets_names']==['Sheet1'] for file in sheets.values()])
+        assert np.all([file['sheets_count']==1 for file in sheets.values()])
+    
+    helper(create_files_xls_single)
+    helper(create_files_xlsx_single)
+
+def test_xls_scan_sheets_multipe(create_files_xls_multiple,create_files_xlsx_multiple):
+    def helper(fnames):
+        xlsSniffer = XLSSniffer(fnames)
+        sheets = xlsSniffer.dict_xls_sheets
+        assert np.all([file['sheets_names']==['Sheet1', 'Sheet2'] for file in sheets.values()])
+        assert np.all([file['sheets_count']==2 for file in sheets.values()])
+
+    helper(create_files_xls_multiple)
+    helper(create_files_xlsx_multiple)
+
+#todo: wrong file raises exception NotImplementedError
+
+
+#************************************************************
+# tests - ui
 #************************************************************
 def test_combine_csv(create_files_csv):
     r = combine_files(create_files_csv, '', logger, cfg_return_df=True)
@@ -402,4 +477,7 @@ def test_combine_xls_multipe(create_files_xls_multiple):
 
     assert df.equals(df_chk)
 
-# todo: preview dictionary
+def test_preview_dict():
+    df = pd.DataFrame({'col1':[0,1],'col2':[0,1]})
+    assert preview_dict(df) == {'columns': ['col1', 'col2'], 'rows': {0: [[0]], 1: [[1]]}}
+
