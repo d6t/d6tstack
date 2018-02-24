@@ -1,0 +1,7 @@
+combine\_files module
+=====================
+
+.. automodule:: combine_files
+    :members:
+    :undoc-members:
+    :show-inheritance:
