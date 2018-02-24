@@ -21,7 +21,7 @@ Easily join different datasets without writing custom code. Does fuzzy and time-
 
 Automatically combine multiple files into one by stacking them together
 
-![](https://www.databolt.tech/images/combiner-landing.png)
+![](https://www.databolt.tech/images/combiner-landing-small.png)
 
 Example features include
 
