@@ -31,6 +31,6 @@ __coming soon__
 
 ## Documentation
 
-*  [Official docs](https://readthedocs.org/) - Demonstrates usage
+*  [Official docs](https://readthedocs.org/) - Detailed documentation for modules, classes, functions
 *  [Examples notebook](https://github.com/d6t/d6t-lib/blob/master/examples.ipynb) - Demonstrates usage
 *  [www.databolt.tech](https://www.databolt.tech/) - Landing page & web app
