@@ -27,7 +27,6 @@ Example features include
 ## Smart Join
 
 Easily join different datasets without writing custom code. Does fuzzy and time-series aware joins.
-
 __coming soon__
 
 ## Documentation
