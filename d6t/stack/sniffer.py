@@ -7,6 +7,14 @@ Finds CSV settings and Excel sheets in multiple files. Often needed as input for
 """
 import collections
 import csv
+import ntpath
+
+import numpy as np
+import pandas as pd
+import openpyxl
+import xlrd
+
+from .helpers import check_valid_xls
 
 #******************************************************************
 # csv
@@ -187,11 +195,11 @@ class CSVSnifferList(object):
 class XLSSniffer(object):
     """
     
-    Extracts available sheets from MULTIPLE Excel files
+    Extracts available sheets from MULTIPLE Excel files and runs diagnostics
 
     Args:
-        fname_list (list): file names, eg ['a.csv','b.csv']
-        logger (object): optional logger to log events to
+        fname_list (list): file paths, eg ['dir/a.csv','dir/b.csv']
+        logger (object): logger object with send_log(), optional
 
     """
 
@@ -199,9 +207,17 @@ class XLSSniffer(object):
         self.fname_list = fname_list
         self.logger = logger
         check_valid_xls(self.fname_list)
-        self.scan()
+        self.sniff()
 
-    def scan(self):
+    def sniff(self):
+        """
+        
+        Executes sniffer
+
+        Returns:
+            boolean: True if everything ok. Results are accessible in ``.df_xls_sheets``
+
+        """
 
         xls_sheets = {}
         for fname in self.fname_list:
@@ -213,6 +229,7 @@ class XLSSniffer(object):
             if fname[-5:]=='.xlsx':
                 fh = openpyxl.load_workbook(fname,read_only=True)
                 xls_fname['sheets_names'] = fh.sheetnames
+                fh.close()
                 # todo: need to close file?
             elif fname[-4:]=='.xls':
                 fh = xlrd.open_workbook(fname, on_demand=True)
@@ -233,16 +250,50 @@ class XLSSniffer(object):
         self.dict_xls_sheets = xls_sheets
         self.df_xls_sheets = df_xls_sheets
 
-    def all_contain_sheet(self,sheet_name):
+        return True
+
+    def all_contain_sheetname(self,sheet_name):
+        """        
+        Check if all files contain a certain sheet
+
+        Args:
+            sheet_name (string): sheetname to check
+
+        Returns:
+            boolean: If true
+
+        """
         return np.all([sheet_name in self.dict_xls_sheets[fname]['sheets_names'] for fname in self.fname_list])
 
     def all_have_idx(self,sheet_idx):
-        return np.all([sheet_idx<=d['sheets_count'] for d in self.dict_xls_sheets])
+        """        
+        Check if all files contain a certain index
+
+        Args:
+            sheet_idx (string): index to check
+
+        Returns:
+            boolean: If true
+
+        """
+        return np.all([sheet_idx<=(d['sheets_count']-1) for k,d in self.dict_xls_sheets.items()])
 
     def all_same_count(self):
-        return np.all([self.dict_xls_sheets[0]['sheets_count']==d['sheets_count'] for d in self.dict_xls_sheets])
+        """        
+        Check if all files contain the same number of sheets
+
+        Args:
+            sheet_idx (string): index to check
+
+        Returns:
+            boolean: If true
+
+        """
+        first_elem = next(iter(self.dict_xls_sheets.values()))
+        return np.all([first_elem['sheets_count']==d['sheets_count'] for k,d in self.dict_xls_sheets.items()])
 
     def all_same_names(self):
-        return np.all([self.dict_xls_sheets[0]['sheets_names']==d['sheets_names'] for d in self.dict_xls_sheets])
+        first_elem = next(iter(self.dict_xls_sheets.values()))
+        return np.all([first_elem['sheets_names']==d['sheets_names'] for k,d in self.dict_xls_sheets.items()])
 
 

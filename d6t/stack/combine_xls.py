@@ -7,83 +7,31 @@ import pandas as pd
 import openpyxl
 import xlrd
 
-from .helpers import *
-from .helpers_ui import *
-
-
-def check_valid_xls(fname_list):
-    ext_list = file_extensions_get(fname_list)
-
-    if not file_extensions_all_equal(ext_list):
-        raise IOError('All file types and extensions have to be equal')
-
-    if not(file_extensions_contains_xls(ext_list) or file_extensions_contains_xlsx(ext_list)):
-        raise IOError('Only .xls, .xlsx files can be converted')
-
-    return True
-
-
-#******************************************************************
-# sniffer
-#******************************************************************
-
-class XLSSniffer(object):
-
-    def __init__(self, fname_list, logger=None):
-        self.fname_list = fname_list
-        self.logger = logger
-        check_valid_xls(self.fname_list)
-        self.scan()
-
-    def scan(self):
-
-        xls_sheets = {}
-        for fname in self.fname_list:
-            if self.logger:
-                self.logger.send_log('sniffing sheets in '+ntpath.basename(fname),'ok')
-
-            xls_fname = {}
-            xls_fname['file_name'] = ntpath.basename(fname)
-            if fname[-5:]=='.xlsx':
-                fh = openpyxl.load_workbook(fname,read_only=True)
-                xls_fname['sheets_names'] = fh.sheetnames
-                # todo: need to close file?
-            elif fname[-4:]=='.xls':
-                fh = xlrd.open_workbook(fname, on_demand=True)
-                xls_fname['sheets_names'] = fh.sheet_names()
-                fh.release_resources()
-            else:
-                raise IOError('Only .xls or .xlsx files can be combined')
-
-            xls_fname['sheets_count'] = len(xls_fname['sheets_names'])
-            xls_fname['sheets_idx'] = np.arange(xls_fname['sheets_count']).tolist()
-            xls_sheets[fname] = xls_fname
-
-            self.xls_sheets = xls_sheets
-
-        df_xls_sheets = pd.DataFrame(xls_sheets).T
-        df_xls_sheets.index.names = ['file_path']
-
-        self.dict_xls_sheets = xls_sheets
-        self.df_xls_sheets = df_xls_sheets
-
-    def all_contain_sheet(self,sheet_name):
-        return np.all([sheet_name in self.dict_xls_sheets[fname]['sheets_names'] for fname in self.fname_list])
-
-    def all_have_idx(self,sheet_idx):
-        return np.all([sheet_idx<=d['sheets_count'] for d in self.dict_xls_sheets])
-
-    def all_same_count(self):
-        return np.all([self.dict_xls_sheets[0]['sheets_count']==d['sheets_count'] for d in self.dict_xls_sheets])
-
-    def all_same_names(self):
-        return np.all([self.dict_xls_sheets[0]['sheets_names']==d['sheets_names'] for d in self.dict_xls_sheets])
-
+from .helpers import check_valid_xls
+from .sniffer import XLSSniffer
 
 #******************************************************************
 # convertor
 #******************************************************************
 class XLStoCSVMultiFile(object):
+    """
+    
+    Converts xls|xlsx files to csv files. Selects a SINGLE SHEET from each file. To extract MULTIPLE SHEETS from a file use XLStoCSVMultiSheet
+
+    Args:
+        fname_list (list): file paths, eg ['dir/a.csv','dir/b.csv']
+        cfg_xls_sheets_sel_mode (string): mode to select tabs
+
+            * ``name``: select by name, provide name for each file, can customize by file
+            * ``name_global``: select by name, one name for all files
+            * ``idx``: select by index, provide index for each file, can customize by file
+            * ``idx_global``: select by index, one index for all files
+
+        cfg_xls_sheets_sel (list): values to select tabs **NEEDS TO BE IN THE SAME ORDER AS `fname_list`**
+        logger (object): logger object with send_log(), optional
+
+    """
+
 
     def __init__(self, fname_list, cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel, logger=None):
         self.logger = logger
@@ -91,10 +39,27 @@ class XLStoCSVMultiFile(object):
         self.set_select_mode(cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel)
 
     def set_files(self, fname_list):
+        """
+        
+        Update input files. You will also need to update sheet selection with ``.set_select_mode()``.
+
+        Args:
+            fname_list (list): see class description for details
+
+        """
         self.fname_list = fname_list
         self.xlsSniffer = XLSSniffer(fname_list)
 
     def set_select_mode(self, cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel):
+        """
+        
+        Update sheet selection values
+
+        Args:
+            cfg_xls_sheets_sel_mode (string): see class description for details
+            cfg_xls_sheets_sel (list): see class description for details
+
+        """
 
         assert cfg_xls_sheets_sel_mode in ['name','idx','name_global','idx_global']
         sheets = self.xlsSniffer.dict_xls_sheets
@@ -127,16 +92,24 @@ class XLStoCSVMultiFile(object):
 
     def _convert_single(self, fname):
         if self.logger:
-            self.logger.send_log('sniffing sheets in '+ntpath.basename(fname),'ok')
+            self.logger.send_log('converting file: '+ntpath.basename(fname)+' | sheet: '+ str(self.cfg_xls_sheets_sel[fname]),'ok')
 
         fname_out = fname+'-'+str(self.cfg_xls_sheets_sel[fname])+'.csv'
-        df = pd.read_excel(fname, sheetname=self.cfg_xls_sheets_sel[fname], dtype='str')
+        df = pd.read_excel(fname, sheet_name=self.cfg_xls_sheets_sel[fname], dtype='str')
         df.to_csv(fname_out,index=False)
 
         return fname_out
 
     def convert_all(self):
-        # todo: customize output dir
+        """
+        
+        Executes conversion. Writes to the same path as file and appends .csv to filename.
+
+        Returns: 
+            list: output file names
+        """
+
+        # todo: customize output dir. customize output filename
 
         # read files
         fnames_converted = []
@@ -148,6 +121,15 @@ class XLStoCSVMultiFile(object):
 
 
 class XLStoCSVMultiSheet(object):
+    """
+    
+    Converts ALL SHEETS from a SINGLE xls|xlsx files to separate csv files
+
+    Args:
+        fname (string): file path
+        logger (object): logger object with send_log()
+
+    """
 
     def __init__(self, fname, logger=None):
         assert type(fname) is str
@@ -172,7 +154,7 @@ class XLStoCSVMultiSheet(object):
                 self.logger.send_log('sniffing sheets in '+ntpath.basename(fname),'ok')
 
             fname_out = fname+'-'+str(iSheet)+'.csv'
-            df = pd.read_excel(fname, sheetname=iSheet, dtype='str')
+            df = pd.read_excel(fname, sheet_name=iSheet, dtype='str')
             df.to_csv(fname_out,index=False)
             fnames_converted.append(fname_out)
 

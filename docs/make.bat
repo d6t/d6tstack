@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=source
 set BUILDDIR=build
-set SPHINXPROJ=d6t-celery-combine
+set SPHINXPROJ=d6t-lib
 
 if "%1" == "" goto help
 
