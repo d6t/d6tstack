@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# d6t-celery-combine documentation build configuration file, created by
+# d6t-lib documentation build configuration file, created by
 # sphinx-quickstart on Tue Nov 28 11:32:56 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -21,7 +21,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../')) #todo: why is this not working?
-sys.path.insert(0, os.path.abspath('/mnt/data/dev/d6t-django-combine/datasets/combiner'))
+sys.path.insert(0, os.path.abspath('/vagrant/d6t-lib/d6t'))
 
 
 # -- General configuration ------------------------------------------------
@@ -52,9 +52,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'd6t-celery-combine'
-copyright = '2017, nn'
-author = 'nn'
+project = 'd6t'
+copyright = '2017, databolt'
+author = 'databolt'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -121,7 +121,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'd6t-celery-combinedoc'
+htmlhelp_basename = 'd6t-lib-doc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -148,7 +148,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'd6t-celery-combine.tex', 'd6t-celery-combine Documentation',
+    (master_doc, 'd6t-lib.tex', 'd6t-lib Documentation',
      'nn', 'manual'),
 ]
 
@@ -158,7 +158,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'd6t-celery-combine', 'd6t-celery-combine Documentation',
+    (master_doc, 'd6t-lib', 'd6t-lib Documentation',
      [author], 1)
 ]
 
@@ -169,8 +169,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'd6t-celery-combine', 'd6t-celery-combine Documentation',
-     author, 'd6t-celery-combine', 'One line description of project.',
+    (master_doc, 'd6t-lib', 'd6t-lib Documentation',
+     author, 'd6t-lib', 'Databolt python library - Accelerate data engineering',
      'Miscellaneous'),
 ]
 

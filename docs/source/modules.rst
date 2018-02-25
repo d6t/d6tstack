@@ -1,9 +1,6 @@
-combiner
-========
+d6t-lib
+=======
 
 .. toctree::
    :maxdepth: 4
 
-   combine_files
-   debug_run
-   test_combine

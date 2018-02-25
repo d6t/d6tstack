@@ -2,11 +2,9 @@
 
 ## Accelerate data engineering
 
-DataBolt provides tools to reduce the time it takes to get your data ready for evaluation and analysis.
+DataBolt provides products to reduce the time it takes to get your data ready for evaluation and analysis.
 
 [www.databolt.tech](https://www.databolt.tech/) - Landing page & web app
-
-## Features Overview 
 
 ## File Combiner
 
