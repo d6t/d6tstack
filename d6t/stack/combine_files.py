@@ -13,8 +13,6 @@ import os
 import ntpath
 
 import numpy as np
-import pandas as pd
-
 import openpyxl
 import xlrd
 
@@ -22,6 +20,7 @@ from .helpers import *
 from .helpers_ui import *
 from .combine_csv import *
 from .combine_xls import *
+from .sniffer import *
 
 #******************************************************************
 # coordinator

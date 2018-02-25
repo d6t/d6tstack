@@ -14,7 +14,7 @@ Automatically combine multiple files into one by stacking them together. Works f
 
 Example features include
 
-* Scan headers of all files to check column names
+* Scan headers of all files to check column names => useful QA tool before using dask or pyspark
 * Select and rename columns in multiple files
 * CSV Settings sniffer
 * Excel tab sniffer

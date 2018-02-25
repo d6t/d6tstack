@@ -99,3 +99,24 @@ def cols_filename_tofront(_list):
 def df_filename_tofront(dfg):
     cfg_col = dfg.columns.tolist()
     return dfg[cols_filename_tofront(cfg_col)]
+
+
+def check_valid_xls(fname_list):
+    ext_list = file_extensions_get(fname_list)
+
+    if not file_extensions_all_equal(ext_list):
+        raise IOError('All file types and extensions have to be equal')
+
+    if not(file_extensions_contains_xls(ext_list) or file_extensions_contains_xlsx(ext_list)):
+        raise IOError('Only .xls, .xlsx files can be processed')
+
+    return True
+
+
+class PrintLogger(object):        
+    def send_log(self, msg, status):
+        print(msg,status)
+
+    def send(self, data):
+        print(data)
+

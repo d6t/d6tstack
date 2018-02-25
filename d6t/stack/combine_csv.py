@@ -37,7 +37,7 @@ class CombinerCSV(object):
 
     """
 
-    def __init__(self, fname_list, sep=',', all_strings = False, header_row = 0, skiprows=0, nrows_preview=5, logger=None):
+    def __init__(self, fname_list, sep=',', all_strings = False, header_row = 0, skiprows=0, nrows_preview=3, logger=None):
         self.fname_list = fname_list
         self.sep = sep
         self.all_strings = all_strings
@@ -90,6 +90,7 @@ class CombinerCSV(object):
         col_files = dict(zip(self.fname_list, dfl_all_col))
         col_common = list_common(list(col_files.values()))
         col_all = list_unique(list(col_files.values()))
+        col_unique = list(set(col_all)-set(col_common))
 
         # find index in column list so can check order is correct
         df_col_present = {}
@@ -105,7 +106,7 @@ class CombinerCSV(object):
                 df_col_order[iFileName]=[ntpath.basename(iFileName),]+[iFileCol.index(iCol) if iCol in iFileCol else np.nan for iCol in col_all]
         df_col_order = pd.DataFrame(df_col_order,index=['filename']+col_all).T
 
-        col_preview = {'files_columns':col_files, 'columns_all':col_all, 'columns_common':col_common, 'is_all_equal':columns_all_equal(dfl_all_col), 'df_columns_present':df_col_present, 'df_columns_order':df_col_order}
+        col_preview = {'files_columns':col_files, 'columns_all':col_all, 'columns_common':col_common, 'columns_unique':col_unique, 'is_all_equal':columns_all_equal(dfl_all_col), 'df_columns_present':df_col_present, 'df_columns_order':df_col_order}
         self.col_preview = col_preview
 
         return col_preview
