@@ -19,9 +19,11 @@ Notes:
     * test_combine_() test the main combine function
 
 """
+# import sys, os.path
+# d6t_dir = (os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# sys.path.append(d6t_dir)
 
 from d6t.stack.combine_files import *
-from d6t.stack.helpers import *
 from d6t.stack.combine_csv import *
 from d6t.stack.combine_xls import *
 
