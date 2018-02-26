@@ -27,6 +27,12 @@ Example features include
 Easily join different datasets without writing custom code. Does fuzzy and time-series aware joins.
 __coming soon__
 
+## Installation
+
+Install `pip install git+https://github.com/d6t/d6t-lib.git`
+
+Update `pip install --upgrade git+https://github.com/d6t/d6t-lib.git`
+
 ## Documentation
 
 *  [Official docs](https://readthedocs.org/) - Detailed documentation for modules, classes, functions
