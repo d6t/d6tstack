@@ -19,10 +19,12 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('../')) #todo: why is this not working?
-sys.path.insert(0, os.path.abspath('/vagrant/d6t-lib/d6t'))
 
+sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.dirname(os.path.abspath('.')))  # todo: why is this not working?
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('.'))))
+sys.path.insert(0, os.path.join(os.path.dirname((os.path.abspath('.'))), "d6t"))
+sys.path.insert(0, os.path.abspath('/vagrant/d6t-lib/d6t'))
 
 # -- General configuration ------------------------------------------------
 
@@ -34,10 +36,10 @@ sys.path.insert(0, os.path.abspath('/vagrant/d6t-lib/d6t'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
-    'sphinx.ext.todo',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
-        'sphinxcontrib.napoleon']
+              'sphinx.ext.todo',
+              'sphinx.ext.viewcode',
+              'sphinx.ext.githubpages',
+              'sphinxcontrib.napoleon']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -83,13 +85,12 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'bizstyle'#'alabaster'
+html_theme = 'bizstyle'  # 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -123,7 +124,6 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'd6t-lib-doc'
 
-
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
@@ -152,7 +152,6 @@ latex_documents = [
      'nn', 'manual'),
 ]
 
-
 # -- Options for manual page output ---------------------------------------
 
 # One entry per manual page. List of tuples
@@ -161,7 +160,6 @@ man_pages = [
     (master_doc, 'd6t-lib', 'd6t-lib Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output -------------------------------------------
 
@@ -173,6 +171,3 @@ texinfo_documents = [
      author, 'd6t-lib', 'Databolt python library - Accelerate data engineering',
      'Miscellaneous'),
 ]
-
-
-

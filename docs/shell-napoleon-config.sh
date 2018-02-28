@@ -1,2 +1,3 @@
 sphinx-apidoc -f -o ./source ..
-# make html 
+make clean
+make html 
