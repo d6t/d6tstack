@@ -113,6 +113,10 @@ def check_valid_xls(fname_list):
     return True
 
 
+def foo():
+    print("working")
+
+
 class PrintLogger(object):        
     def send_log(self, msg, status):
         print(msg,status)
