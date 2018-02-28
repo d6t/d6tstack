@@ -4,3 +4,5 @@ openpyxl
 xlrd
 pandas
 xlwt
+sphinx
+sphinxcontrib-napoleon
