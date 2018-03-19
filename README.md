@@ -35,6 +35,6 @@ Update `pip install --upgrade git+https://github.com/d6t/d6t-lib.git`
 
 ## Documentation
 
-*  [Official docs](https://readthedocs.org/) - Detailed documentation for modules, classes, functions
 *  [Examples notebook](https://github.com/d6t/d6t-lib/blob/master/examples.ipynb) - Demonstrates usage
+*  [Official docs](http://d6t.readthedocs.io/en/latest/d6t.stack.html) - Detailed documentation for modules, classes, functions
 *  [www.databolt.tech](https://www.databolt.tech/) - Landing page & web app
