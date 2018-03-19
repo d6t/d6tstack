@@ -1,9 +1,5 @@
-pytest
 numpy
 openpyxl
 xlrd
 pandas
 xlwt
-sphinx
-sphinxcontrib-napoleon
-sphinx_rtd_theme
