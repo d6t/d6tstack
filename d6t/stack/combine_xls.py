@@ -131,10 +131,12 @@ class XLStoCSVMultiSheet(object):
 
     """
 
-    def __init__(self, fname, logger=None):
+    def __init__(self, fname, sheet_names=None, logger=None):
         assert type(fname) is str
         self.logger = logger
         self.set_files(fname)
+        assert sheet_names is None or isinstance(sheet_names, list)
+        self.sheet_names = sheet_names
 
     def set_files(self, fname):
         self.fname = fname
@@ -142,21 +144,24 @@ class XLStoCSVMultiSheet(object):
 
     def _convert_single(self, fname):
 
-        return fname_out
+        return fname
 
     def convert_all(self):
         # todo: customize output dir
 
         # read files
         fnames_converted = []
-        for iSheet in self.xlsSniffer[self.fname]['sheet_name']:
-            if self.logger:
-                self.logger.send_log('sniffing sheets in '+ntpath.basename(fname),'ok')
+        for iSheet in self.xlsSniffer.xls_sheets[self.fname]['sheets_names']:
+            if not self.sheet_names or iSheet in self.sheet_names:
+                if self.logger:
+                    self.logger.send_log('sniffing sheets in '+ntpath.basename(self.fname),'ok')
 
-            fname_out = fname+'-'+str(iSheet)+'.csv'
-            df = pd.read_excel(fname, sheet_name=iSheet, dtype='str')
-            df.to_csv(fname_out,index=False)
-            fnames_converted.append(fname_out)
+                fname_out = self.fname+'-'+str(iSheet)+'.csv'
+                df = pd.read_excel(self.fname, sheet_name=iSheet, dtype='str')
+                df.to_csv(fname_out,index=False)
+                fnames_converted.append(fname_out)
+            else:
+                if self.logger:
+                    self.logger.send_log('Ignoring sheet: ' + iSheet, 'ok')
 
         return fnames_converted
-
