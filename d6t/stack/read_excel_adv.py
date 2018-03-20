@@ -22,10 +22,10 @@ def read_excel_adv(io, remove_blank_cols=False, remove_blank_rows=False, collaps
             # Return with error message - Discuss with Norman
             raise Exception
 
-    # header, skiprows, usecols
     scol, srow = coordinate_from_string(header_xls_start)
     ecol, erow = coordinate_from_string(header_xls_end)
 
+    # header, skiprows, usecols
     header = [x for x in range(erow - srow + 1)]
     usecols = scol + ":" + ecol
     skiprows = srow - 1
