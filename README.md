@@ -2,9 +2,7 @@
 
 ## Accelerate data engineering
 
-DataBolt provides products to reduce the time it takes to get your data ready for evaluation and analysis.
-
-[www.databolt.tech](https://www.databolt.tech/) - Landing page & web app
+DataBolt is a collection of products and libraries to reduce the time it takes to get your data ready for evaluation and analysis.
 
 ## File Combiner
 
@@ -37,4 +35,4 @@ Update `pip install --upgrade git+https://github.com/d6t/d6t-lib.git`
 
 *  [Examples notebook](https://github.com/d6t/d6t-lib/blob/master/examples.ipynb) - Demonstrates usage
 *  [Official docs](http://d6t.readthedocs.io/en/latest/d6t.stack.html) - Detailed documentation for modules, classes, functions
-*  [www.databolt.tech](https://www.databolt.tech/) - Landing page & web app
+*  [www.databolt.tech](https://www.databolt.tech/index-combine.html) - File combiner web app
