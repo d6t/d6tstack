@@ -30,7 +30,7 @@ def read_excel_adv(io, remove_blank_cols=False, remove_blank_rows=False, collaps
     usecols = scol + ":" + ecol
     skiprows = srow - 1
 
-    df = read_excel(io, header=header, skiprows=skiprows, usecols=usecols, **kwds)
+    df = read_excel(io, index_col=None, header=header, skiprows=skiprows, usecols=usecols, **kwds)
 
     if remove_blank_cols:
         df = df.dropna(axis='columns', how='all')
