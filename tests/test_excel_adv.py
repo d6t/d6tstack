@@ -33,3 +33,22 @@ def test_read_excel_adv():
                         header_xls_end="I24")
     assert 'End Date' in df.columns
     assert 'Year-over-Year Change Sales Index' in df.columns
+
+    fname = fname_base_input_dir + 'read_excel_adv - sample1.xlsx'
+    df = read_excel_adv(fname, remove_blank_cols=True,
+                        remove_blank_rows=True, collapse_header=True, header_xls_start="A8",
+                        header_xls_end="O9")
+    assert 'Balance' in df.columns
+
+    fname = fname_base_input_dir + 'read_excel_adv - sample2.xlsx'
+    df = read_excel_adv(fname, remove_blank_cols=True,
+                        remove_blank_rows=True, collapse_header=True, header_xls_start="B23",
+                        header_xls_end="I24")
+    assert 'End Date' in df.columns
+    assert 'End Date1' in df.columns
+
+    fname = fname_base_input_dir + 'read_excel_adv - sample3.xlsx'
+    df = read_excel_adv(fname, remove_blank_cols=True,
+                        remove_blank_rows=True, collapse_header=True, header_xls_start="A10",
+                        header_xls_end="G10")
+    assert 'Product Code' in df.columns
