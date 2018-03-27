@@ -197,7 +197,7 @@ class CombinerCSVAdvanced(object):
         
         # write header
         df_all_header = pd.DataFrame(columns=cfg_col_sel)
-        df_all_header.to_csv(fhandle,header=True,index=False)
+        df_all_header.rename(columns=self.cfg_col_rename).to_csv(fhandle,header=True,index=False)
         # todo: what if file hasn't header
         
         for fname in self.combiner.fname_list:
