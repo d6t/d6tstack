@@ -179,7 +179,6 @@ class CombinerCSVAdvanced(object):
         df_all_preview.to_csv(fname_out,index=False)
         return True
 
-
     def combine(self):
         df_all = self.combiner.read_csv_all(msg='reading full file', cfg_col_sel=self.cfg_col_sel, cfg_col_rename=self.cfg_col_rename)
         df_all = pd.concat(df_all)
