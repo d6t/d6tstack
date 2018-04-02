@@ -37,19 +37,18 @@ class CombinerCSV(object):
 
     """
 
-    def __init__(self, fname_list, sep=',', all_strings = False, header_row = 0, skiprows=0, nrows_preview=3, logger=None):
+    def __init__(self, fname_list, sep=',', all_strings = False, nrows_preview=3, read_csv_params = {}, logger=None):
         self.fname_list = fname_list
         self.sep = sep
         self.all_strings = all_strings
-        self.header_row = header_row
-        self.skiprows=skiprows
         self.nrows_preview = nrows_preview
+        self.read_csv_params = read_csv_params
         self.logger = logger
 
     def read_csv(self, fname, is_preview=False, chunksize=None):
         cfg_dype = str if self.all_strings else None
         cfg_nrows = self.nrows_preview if is_preview else None
-        return pd.read_csv(fname, dtype=cfg_dype, sep=self.sep, header=self.header_row, skiprows=self.skiprows, nrows=cfg_nrows, chunksize=chunksize)
+        return pd.read_csv(fname, dtype=cfg_dype, sep=self.sep, nrows=cfg_nrows, chunksize=chunksize, **self.read_csv_params)
 
     def read_csv_all(self, msg=None, is_preview=False, chunksize=None, cfg_col_sel=None, cfg_col_rename={}):
         dfl_all = []
