@@ -6,15 +6,15 @@ from openpyxl.utils import coordinate_from_string
 
 class ExcelAdvanced:
     def __init__(self, fname_list, remove_blank_cols=False, remove_blank_rows=False, collapse_header=False,
-                 header_xl_range=None, header_xls_start=None, header_xls_end=None, nrows_preview=3, logger=None):
+                 header_xls_range=None, header_xls_start=None, header_xls_end=None, nrows_preview=3, logger=None):
         self.fname_list = fname_list
         self.remove_blank_cols = remove_blank_cols
         self.remove_blank_rows = remove_blank_rows
         self.collapse_header = collapse_header
         if not (header_xls_start and header_xls_end):
-            if header_xl_range:
-                header_xl_range = header_xl_range.split(':')
-                header_xls_start , header_xls_end = header_xl_range
+            if header_xls_range:
+                header_xls_range = header_xls_range.split(':')
+                header_xls_start , header_xls_end = header_xls_range
             else:
                 # Return with error message - Discuss with Norman
                 raise Exception
