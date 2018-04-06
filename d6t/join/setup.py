@@ -1,10 +1,10 @@
 from setuptools import setup
 
 setup(
-    name='d6t-dev',
+    name='d6t-dev-join',
     version='0.1.0',
-    packages=['d6t', 'd6t.stack', 'tests'],
-    url='https://github.com/d6t/d6t-lib',
+    packages=['join'],
+    url='https://github.com/d6t/d6t-lib/d6t/join',
     license='MIT',
     author='DataBolt Team',
     author_email='sales@databolt.tech',
