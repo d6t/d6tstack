@@ -12,7 +12,40 @@ Vendors often send large datasets in multiple files. Often there are missing and
 
 ![](https://www.databolt.tech/images/combiner-landing-git.png)
 
-Features include
+### Sample Use
+
+```python
+
+import glob
+import d6t.stack.combine_csv as d6tc
+>>> c = d6tc.CombinerCSV(glob.glob('*.csv'))
+
+>>> c.col_preview['is_all_equal']
+False
+
+>>> c.col_preview['df_columns_present']
+   filename  cost  date profit profit2 sales
+0  feb.csv  True  True   True   False  True
+1  jan.csv  True  True   True   False  True
+2  mar.csv  True  True   True    True  True
+
+>>> c.combine_preview() # keep all columns
+   filename  cost        date profit profit2 sales
+0   jan.csv  -80  2011-01-01     20     NaN   100
+0   feb.csv  -90  2011-02-01    110     NaN   200
+0   mar.csv  -100  2011-03-01    200     400   300
+
+>>> c.combine_preview(is_col_common=True) # keep common columns
+   filename  cost        date profit sales
+0   jan.csv  -80  2011-01-01     20   100
+0   feb.csv  -90  2011-02-01    110   200
+0   mar.csv  -100  2011-03-01    200   300
+
+```
+
+
+
+### Features include
 
 * Scan headers of all files to check column names => useful QA tool before using dask or pyspark
 * Select and rename columns in multiple files
