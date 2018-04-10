@@ -45,6 +45,7 @@ class CombinerCSV(object):
         self.skiprows=skiprows
         self.nrows_preview = nrows_preview
         self.logger = logger
+        self.col_preview = None
 
     def read_csv(self, fname, is_preview=False, chunksize=None):
         cfg_dype = str if self.all_strings else None
@@ -111,6 +112,17 @@ class CombinerCSV(object):
 
         return col_preview
 
+    def is_all_equal(self):
+        """
+        Return all files equal after checking if preview_columns has been run. If not run it.
+
+        Returns:
+             self.col_preview['is_all_equal'] (boolean): If all files equal?
+        """
+        if self.col_preview:
+            return self.col_preview['is_all_equal']
+        else:
+            return self.preview_columns()['is_all_equal']
 
     def combine_preview(self, is_col_common = False):
         """
