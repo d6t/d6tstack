@@ -124,7 +124,7 @@ class CombinerCSV(object):
         else:
             return self.preview_columns()['is_all_equal']
 
-    def combine_preview(self, is_col_common = False):
+    def preview_combine(self, is_col_common = False):
         """
         
         Preview of combines all files
@@ -181,13 +181,13 @@ class CombinerCSVAdvanced(object):
         self.cfg_col_sel = cfg_col_sel 
         self.cfg_col_rename = cfg_col_rename
 
-    def combine_preview(self):
+    def preview_combine(self):
         df_all = self.combiner.read_csv_all(msg='reading preview file', is_preview=True, cfg_col_sel=self.cfg_col_sel, cfg_col_rename=self.cfg_col_rename)
         df_all = pd.concat(df_all)
         return df_all
 
     def combine_preview_save(self, fname_out):
-        df_all_preview = self.combine_preview()
+        df_all_preview = self.preview_combine()
         df_all_preview.to_csv(fname_out,index=False)
         return True
 

@@ -321,7 +321,7 @@ def test_CombinerCSV_combine(create_files_csv, create_files_csv_colmismatch, cre
 
     df = combiner.combine()
     df = df.groupby('filename').head(combiner.nrows_preview)
-    df_chk = combiner.combine_preview()
+    df_chk = combiner.preview_combine()
     assert df.equals(df_chk)
 
     # columns mismatch, all columns
@@ -350,7 +350,7 @@ def test_CombinerCSVAdvanced_combine(create_files_csv):
     assert 'date1' in df.columns.values
     assert 'date' not in df.columns.values
 
-    df = adv_combiner.combine_preview()
+    df = adv_combiner.preview_combine()
     assert 'date1' in df.columns.values
     assert 'date' not in df.columns.values
 
@@ -360,7 +360,7 @@ def test_CombinerCSVAdvanced_combine(create_files_csv):
     assert 'profit2' in df.columns.values
     assert df['profit2'].isnull().all()
 
-    df = adv_combiner.combine_preview()
+    df = adv_combiner.preview_combine()
     assert 'profit2' in df.columns.values
     assert df['profit2'].isnull().all()
 

@@ -211,7 +211,7 @@ def combine_files(fname_list, fname_out_folder, log_pusher, fname_out_base='comb
         raise ValueError('invalid columns_select_mode')
         
     combiner2 = CombinerCSVAdvanced(combiner, cfg_col)
-    df_all_preview = combiner2.combine_preview() 
+    df_all_preview = combiner2.preview_combine()
 
     # data for combined data
     if cfg_return_df:
