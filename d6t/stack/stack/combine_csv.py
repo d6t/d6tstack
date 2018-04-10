@@ -117,12 +117,24 @@ class CombinerCSV(object):
         Return all files equal after checking if preview_columns has been run. If not run it.
 
         Returns:
-             self.col_preview['is_all_equal'] (boolean): If all files equal?
+             is_all_equal (boolean): If all files equal?
         """
         if self.col_preview:
             return self.col_preview['is_all_equal']
         else:
             return self.preview_columns()['is_all_equal']
+
+    def is_col_present(self):
+        """
+        Checks if columns are present
+
+        Returns:
+             bool: if columns present
+        """
+        if self.col_preview:
+            return self.col_preview['df_columns_present'].reset_index(drop=True)
+        else:
+            return self.preview_columns()['df_columns_present'].reset_index(drop=True)
 
     def preview_combine(self, is_col_common = False):
         """
