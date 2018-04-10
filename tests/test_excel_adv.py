@@ -20,7 +20,7 @@ Notes:
 
 """
 
-from d6t.stack.read_excel_adv import *
+from d6t.stack.stack.read_excel_adv import *
 
 fname_base_input_dir = 'test-data/excel_adv_data/'
 fname_base_out_dir = 'test-data/output/'

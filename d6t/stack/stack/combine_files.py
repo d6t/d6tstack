@@ -140,6 +140,13 @@ def combine_files(fname_list, fname_out_folder, log_pusher, fname_out_base='comb
 
         cfg_sheets = cfg_settings['xls_sheets_sel']
 
+        if not 'remove_blank_cols' not in cfg_settings:
+            cfg_settings['remove_blank_cols'] = False
+        if not 'remove_blank_cols' not in cfg_settings:
+            cfg_settings['remove_blank_rows'] = False
+        if not 'collapse_header' not in cfg_settings:
+            cfg_settings['collapse_header'] = False
+
         if not 'xls_sheets_sel_fnames' in cfg_settings or cfg_settings['xls_sheets_sel_processed']!=cfg_settings['xls_sheets_sel']:
 
             converter = XLStoCSVMultiFile(fname_list, cfg_settings['xls_sheets_sel_mode'], cfg_settings['xls_sheets_sel'], log_pusher)
