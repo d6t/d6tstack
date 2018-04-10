@@ -17,7 +17,8 @@ setup(
         'pandas',
         'openpyxl',
         'xlrd',
-        'xlwt'
+        'xlwt',
+        'jellyfish'
     ],
     include_package_data=True,
     python_requires='>=3.6'
