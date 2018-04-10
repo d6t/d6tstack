@@ -5,6 +5,26 @@ from openpyxl.utils import coordinate_from_string
 
 
 class ExcelAdvanced:
+    """
+
+        Excel Advanced Class - Checks columns, generates preview, convert excel to dataframes.
+
+        Raises:
+            ValueError: if header_xls_range is invalid or header_xls_start and header_xls_end is invalid
+
+        Args:
+            fname_list (list): excel file names, eg ['a.xls','b.xls']
+            remove_blank_cols (boolean): to remove blank columns in output (default: False)
+            remove_blank_rows (boolean): to remove blank rows in output (default: False)
+            collapse_header (boolean): to convert multiline header to a single line string (default: False)
+            header_xls_range (string): range of headers in excel, eg: A4:B16
+            header_xls_start (string): Starting cell of excel for header range, eg: A4
+            header_xls_end (string): End cell of excel for header range, eg: B16
+            nrows_preview (integer): Initial number of rows to be used for preview columns (default: 3)
+            log_pusher (object): logger object that sends pusher logs
+
+    """
+
     def __init__(self, fname_list, remove_blank_cols=False, remove_blank_rows=False, collapse_header=False,
                  header_xls_range=None, header_xls_start=None, header_xls_end=None, nrows_preview=3, logger=None):
         self.fname_list = fname_list
@@ -26,7 +46,11 @@ class ExcelAdvanced:
     def read_excel_adv(self, io, is_preview=False, **kwds):
         """
         # TODO: Handle multiple sheets at once. Each sheet may have difference col and rows range.
-        :return: dataframe
+        Args:
+            io (string): excel file name or pandas ExcelFile object
+            is_preview (boolean): to get the dataframe with preview rows only.
+        Returns:
+             dataframe
         """
         scol, srow = coordinate_from_string(self.header_xls_start)
         ecol, erow = coordinate_from_string(self.header_xls_end)
