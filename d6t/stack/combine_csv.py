@@ -163,7 +163,7 @@ class CombinerCSV(object):
 
 class CombinerCSVAdvanced(object):
 
-    def __init__(self, combiner, cfg_col_sel, cfg_col_rename={}):
+    def __init__(self, combiner, cfg_col_sel={}, cfg_col_rename={}):
         self.combiner = combiner
         self.cfg_col_sel = cfg_col_sel 
         self.cfg_col_rename = cfg_col_rename

@@ -203,8 +203,8 @@ class CombinerCSVAdvanced(object):
                 self.combiner.logger.send_log('processing '+ntpath.basename(fname),'ok')
             for df_chunk in self.combiner.read_csv(fname,chunksize=1e5):
                 df_chunk['filename'] = ntpath.basename(fname)
-                df_chunk = df_chunk.reindex(columns=cfg_col_sel) # todo: only reindex if need be
                 df_chunk = df_chunk.rename(columns=self.cfg_col_rename) # todo: only rename if need be
+                df_chunk = df_chunk.reindex(columns=cfg_col_sel) # todo: only reindex if need be
                 df_chunk.to_csv(fhandle,header=False,index=False)
                 
         return True
