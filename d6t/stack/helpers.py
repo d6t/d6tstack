@@ -7,6 +7,7 @@ Module with several helper functions
 """
 
 import os
+import collections
 
 def file_extensions_get(fname_list):
     """Returns file extensions in list
@@ -112,6 +113,22 @@ def check_valid_xls(fname_list):
 
     return True
 
+
+def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
+
+    if cfg_col_rename:
+        # check no naming conflicts
+        df_rename_count = collections.Counter(list(map(lambda x: cfg_col_rename[x], dfg.columns[dfg.columns.isin(cfg_col_rename.keys())])))
+        if df_rename_count:
+            if max(df_rename_count.values()) > 1:
+                raise ValueError('Renaming conflict',df_rename_count.values())
+        dfg = dfg.rename(columns=cfg_col_rename)
+    if cfg_col_sel:
+        if cfg_col_rename and cfg_col_sel:
+            cfg_col_sel = list(set(cfg_col_rename.values()) | set(cfg_col_sel))
+        dfg = dfg.reindex(columns=['filename']+cfg_col_sel)
+
+    return dfg
 
 class PrintLogger(object):        
     def send_log(self, msg, status):

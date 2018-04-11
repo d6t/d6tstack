@@ -9,6 +9,7 @@ import xlrd
 
 from .helpers import check_valid_xls
 from .sniffer import XLSSniffer
+from .read_excel_adv import ExcelAdvanced
 
 #******************************************************************
 # convertor
@@ -33,7 +34,8 @@ class XLStoCSVMultiFile(object):
     """
 
 
-    def __init__(self, fname_list, cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel, logger=None):
+    def __init__(self, fname_list, cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel,
+                 logger=None):
         self.logger = logger
         self.set_files(fname_list)
         self.set_select_mode(cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel)
@@ -89,18 +91,23 @@ class XLStoCSVMultiFile(object):
         self.cfg_xls_sheets_sel_mode = cfg_xls_sheets_sel_mode
         self.cfg_xls_sheets_sel = cfg_xls_sheets_sel
 
-
-    def _convert_single(self, fname):
+    def _convert_single(self, fname, remove_blank_cols=False, remove_blank_rows=False, collapse_header=False,
+                        header_xls_range=None, header_xls_start=None, header_xls_end=None):
         if self.logger:
             self.logger.send_log('converting file: '+ntpath.basename(fname)+' | sheet: '+ str(self.cfg_xls_sheets_sel[fname]),'ok')
 
         fname_out = fname+'-'+str(self.cfg_xls_sheets_sel[fname])+'.csv'
-        df = pd.read_excel(fname, sheet_name=self.cfg_xls_sheets_sel[fname], dtype='str')
+        ea = ExcelAdvanced([fname])
+        df = ea.read_excel_adv(fname, remove_blank_cols=remove_blank_cols, remove_blank_rows=remove_blank_rows,
+                               collapse_header=collapse_header, header_xls_range=header_xls_range,
+                               header_xls_start=header_xls_start, header_xls_end=header_xls_end,
+                               sheet_name=self.cfg_xls_sheets_sel[fname], dtype='str')
         df.to_csv(fname_out,index=False)
 
         return fname_out
 
-    def convert_all(self):
+    def convert_all(self, remove_blank_cols=False, remove_blank_rows=False, collapse_header=False,
+                 header_xls_range=None, header_xls_start=None, header_xls_end=None):
         """
         
         Executes conversion. Writes to the same path as file and appends .csv to filename.
@@ -114,7 +121,10 @@ class XLStoCSVMultiFile(object):
         # read files
         fnames_converted = []
         for fname in self.fname_list:
-            fname_out = self._convert_single(fname)
+            fname_out = self._convert_single(fname, remove_blank_cols=remove_blank_cols,
+                                             remove_blank_rows=remove_blank_rows, collapse_header=collapse_header,
+                                             header_xls_range=header_xls_range, header_xls_start=header_xls_start,
+                                             header_xls_end=header_xls_end)
             fnames_converted.append(fname_out)
 
         return fnames_converted
@@ -131,10 +141,12 @@ class XLStoCSVMultiSheet(object):
 
     """
 
-    def __init__(self, fname, logger=None):
+    def __init__(self, fname, sheet_names=None, logger=None):
         assert type(fname) is str
         self.logger = logger
         self.set_files(fname)
+        assert sheet_names is None or isinstance(sheet_names, list)
+        self.sheet_names = sheet_names
 
     def set_files(self, fname):
         self.fname = fname
@@ -142,21 +154,28 @@ class XLStoCSVMultiSheet(object):
 
     def _convert_single(self, fname):
 
-        return fname_out
+        return fname
 
-    def convert_all(self):
+    def convert_all(self, remove_blank_cols=False, remove_blank_rows=False, collapse_header=False,
+                    header_xls_range=None, header_xls_start=None, header_xls_end=None):
         # todo: customize output dir
 
         # read files
         fnames_converted = []
-        for iSheet in self.xlsSniffer[self.fname]['sheet_name']:
-            if self.logger:
-                self.logger.send_log('sniffing sheets in '+ntpath.basename(fname),'ok')
+        for iSheet in self.xlsSniffer.xls_sheets[self.fname]['sheets_names']:
+            if not self.sheet_names or iSheet in self.sheet_names:
+                if self.logger:
+                    self.logger.send_log('sniffing sheets in '+ntpath.basename(self.fname),'ok')
 
-            fname_out = fname+'-'+str(iSheet)+'.csv'
-            df = pd.read_excel(fname, sheet_name=iSheet, dtype='str')
-            df.to_csv(fname_out,index=False)
-            fnames_converted.append(fname_out)
+                fname_out = self.fname+'-'+str(iSheet)+'.csv'
+                df = pd.read_excel(self.fname, remove_blank_cols=remove_blank_cols, remove_blank_rows=remove_blank_rows,
+                                   collapse_header=collapse_header, header_xls_range=header_xls_range,
+                                   header_xls_start=header_xls_start, header_xls_end=header_xls_end,
+                                   sheet_name=iSheet, dtype='str')
+                df.to_csv(fname_out,index=False)
+                fnames_converted.append(fname_out)
+            else:
+                if self.logger:
+                    self.logger.send_log('Ignoring sheet: ' + iSheet, 'ok')
 
         return fnames_converted
-

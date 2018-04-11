@@ -1,10 +1,10 @@
 from setuptools import setup
 
 setup(
-    name='d6t-dev',
+    name='d6tstack',
     version='0.1.0',
     packages=['d6t', 'd6t.stack', 'tests'],
-    url='https://github.com/d6t/d6t-lib',
+    url='https://github.com/d6t/d6tstack',
     license='MIT',
     author='DataBolt Team',
     author_email='sales@databolt.tech',
