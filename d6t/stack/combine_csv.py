@@ -45,6 +45,7 @@ class CombinerCSV(object):
         self.skiprows=skiprows
         self.nrows_preview = nrows_preview
         self.logger = logger
+        self.col_preview = None
 
     def read_csv(self, fname, is_preview=False, chunksize=None):
         cfg_dype = str if self.all_strings else None
@@ -111,8 +112,31 @@ class CombinerCSV(object):
 
         return col_preview
 
+    def is_all_equal(self):
+        """
+        Return all files equal after checking if preview_columns has been run. If not run it.
 
-    def combine_preview(self, is_col_common = False):
+        Returns:
+             is_all_equal (boolean): If all files equal?
+        """
+        if self.col_preview:
+            return self.col_preview['is_all_equal']
+        else:
+            return self.preview_columns()['is_all_equal']
+
+    def is_col_present(self):
+        """
+        Checks if columns are present
+
+        Returns:
+             bool: if columns present
+        """
+        if self.col_preview:
+            return self.col_preview['df_columns_present'].reset_index(drop=True)
+        else:
+            return self.preview_columns()['df_columns_present'].reset_index(drop=True)
+
+    def preview_combine(self, is_col_common = False):
         """
         
         Preview of combines all files
@@ -169,16 +193,15 @@ class CombinerCSVAdvanced(object):
         self.cfg_col_sel = cfg_col_sel 
         self.cfg_col_rename = cfg_col_rename
 
-    def combine_preview(self):
+    def preview_combine(self):
         df_all = self.combiner.read_csv_all(msg='reading preview file', is_preview=True, cfg_col_sel=self.cfg_col_sel, cfg_col_rename=self.cfg_col_rename)
         df_all = pd.concat(df_all)
         return df_all
 
     def combine_preview_save(self, fname_out):
-        df_all_preview = self.combine_preview()
+        df_all_preview = self.preview_combine()
         df_all_preview.to_csv(fname_out,index=False)
         return True
-
 
     def combine(self):
         df_all = self.combiner.read_csv_all(msg='reading full file', cfg_col_sel=self.cfg_col_sel, cfg_col_rename=self.cfg_col_rename)

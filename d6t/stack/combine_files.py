@@ -140,10 +140,19 @@ def combine_files(fname_list, fname_out_folder, log_pusher, fname_out_base='comb
 
         cfg_sheets = cfg_settings['xls_sheets_sel']
 
+        if not 'remove_blank_cols' not in cfg_settings:
+            cfg_settings['remove_blank_cols'] = False
+        if not 'remove_blank_cols' not in cfg_settings:
+            cfg_settings['remove_blank_rows'] = False
+        if not 'collapse_header' not in cfg_settings:
+            cfg_settings['collapse_header'] = False
+
         if not 'xls_sheets_sel_fnames' in cfg_settings or cfg_settings['xls_sheets_sel_processed']!=cfg_settings['xls_sheets_sel']:
 
             converter = XLStoCSVMultiFile(fname_list, cfg_settings['xls_sheets_sel_mode'], cfg_settings['xls_sheets_sel'], log_pusher)
-            fnames_converted = converter.convert_all()
+            fnames_converted = converter.convert_all(cfg_settings['remove_blank_cols'], cfg_settings['remove_blank_rows'],
+                                                     cfg_settings['collapse_header'], cfg_settings['header_xls_range'],
+                                                     cfg_settings['header_xls_start'], cfg_settings['header_xls_end'])
 
             # update settings
             cfg_settings['xls_sheets_sel_fnames'] = fnames_converted
@@ -151,7 +160,6 @@ def combine_files(fname_list, fname_out_folder, log_pusher, fname_out_base='comb
             cfg_settings['csv_sniff']={"delim": ",", "skiprows": 0, "header": 0}
 
         fname_list = cfg_settings['xls_sheets_sel_fnames']
-
 
     elif file_extensions_contains_csv(ext_list):
         log_pusher.send_log('detected csv files','ok')
@@ -210,7 +218,7 @@ def combine_files(fname_list, fname_out_folder, log_pusher, fname_out_base='comb
         raise ValueError('invalid columns_select_mode')
         
     combiner2 = CombinerCSVAdvanced(combiner, cfg_col)
-    df_all_preview = combiner2.combine_preview() 
+    df_all_preview = combiner2.preview_combine()
 
     # data for combined data
     if cfg_return_df:
