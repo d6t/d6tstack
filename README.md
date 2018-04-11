@@ -6,33 +6,4 @@ DataBolt is a collection of products and libraries to reduce the time it takes t
 
 ## File Combiner
 
-Automatically combine multiple files into one by stacking them together. Works for .xls, .csv, .txt.
-
-![](https://www.databolt.tech/images/combiner-landing-small.png)
-
-Example features include
-
-* Scan headers of all files to check column names => useful QA tool before using dask or pyspark
-* Select and rename columns in multiple files
-* CSV Settings sniffer
-* Excel tab sniffer
-* Excel to CSV converter (incl multi-sheet support)
-* Out of core functionality
-* Export to CSV or pandas dataframe
-
-## Smart Join
-
-Easily join different datasets without writing custom code. Does fuzzy and time-series aware joins.
-__coming soon__
-
-## Installation
-
-Install `pip install git+https://github.com/d6t/d6t-lib.git`
-
-Update `pip install --upgrade git+https://github.com/d6t/d6t-lib.git`
-
-## Documentation
-
-*  [Examples notebook](https://github.com/d6t/d6t-lib/blob/master/examples.ipynb) - Demonstrates usage
-*  [Official docs](http://d6t.readthedocs.io/en/latest/d6t.stack.html) - Detailed documentation for modules, classes, functions
-*  [www.databolt.tech](https://www.databolt.tech/index-combine.html) - File combiner web app
+to update
