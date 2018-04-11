@@ -24,32 +24,53 @@ class ExcelAdvanced:
             log_pusher (object): logger object that sends pusher logs
 
     """
-    if not (header_xls_start and header_xls_end):
-        if header_range:
-            header_range = header_range.split(':')
-            header_xls_start , header_xls_end = header_range
-        else:
-            # Return with error message - Discuss with Norman
-            raise Exception
 
-    # header, skiprows, usecols
-    scol, srow = coordinate_from_string(header_xls_start)
-    ecol, erow = coordinate_from_string(header_xls_end)
+    def __init__(self, fname_list, remove_blank_cols=False, remove_blank_rows=False, collapse_header=False,
+                 header_xls_range=None, header_xls_start=None, header_xls_end=None, nrows_preview=3, logger=None):
+        self.fname_list = fname_list
+        self.remove_blank_cols = remove_blank_cols
+        self.remove_blank_rows = remove_blank_rows
+        self.collapse_header = collapse_header
+        if not (header_xls_start and header_xls_end):
+            if header_xls_range:
+                header_xls_range = header_xls_range.split(':')
+                header_xls_start , header_xls_end = header_xls_range
+            else:
+                # Return with error message - Discuss with Norman
+                raise Exception
+        self.header_xls_start = header_xls_start
+        self.header_xls_end = header_xls_end
+        self.nrows_preview = nrows_preview
+        self.logger = logger
 
-    header = [x for x in range(erow - srow + 1)]
-    usecols = scol + ":" + ecol
-    skiprows = srow - 1
+    def read_excel_adv(self, io, is_preview=False, **kwds):
+        """
+        # TODO: Handle multiple sheets at once. Each sheet may have difference col and rows range.
+        Args:
+            io (string): excel file name or pandas ExcelFile object
+            is_preview (boolean): to get the dataframe with preview rows only.
+        Returns:
+             dataframe
+        """
+        scol, srow = coordinate_from_string(self.header_xls_start)
+        ecol, erow = coordinate_from_string(self.header_xls_end)
 
-    df = read_excel(io, index_col=None, header=header, skiprows=skiprows, usecols=usecols, **kwds)
+        # header, skiprows, usecols
+        header = [x for x in range(erow - srow + 1)]
+        usecols = scol + ":" + ecol
+        skiprows = srow - 1
 
-    if remove_blank_cols:
-        df = df.dropna(axis='columns', how='all')
-    if remove_blank_rows:
-        df = df.dropna(axis='rows', how='all')
-    if collapse_header:
-        if len(header) > 1:
-            df.columns = [' '.join([s for s in col if not 'Unnamed' in s]).strip().replace("\n", ' ')
-                          for col in df.columns.values]
+        if is_preview:
+            workbook = pd.ExcelFile(io)
+
+            rows = workbook.book.sheet_by_index(0).nrows
+
+            # Get only preview rows. Way to implement nrows (in read_csv)
+            skip_footer = (rows - skiprows - self.nrows_preview)
+            print(skip_footer)
+
+            df = pd.read_excel(io, header=header, skiprows=skiprows, usecols=usecols,
+                               skip_footer=skip_footer, **kwds)
         else:
             df = pd.read_excel(io, header=header, skiprows=skiprows, usecols=usecols, **kwds)
 
