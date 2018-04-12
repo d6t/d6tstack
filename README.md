@@ -1,8 +1,8 @@
-# Databolt File Stack Combine
+# Databolt File Stack
 
 Automatically combine multiple files into one by stacking them together. Works for .xls, .csv, .txt.
 
-Vendors often send large datasets in multiple files. Often there are missing and misaligned columns between files that have to be manually cleaned. With DataBolt File Combiner you can easily merge them together into one dataframe.
+Vendors often send large datasets in multiple files. Often there are missing and misaligned columns between files that have to be manually cleaned. With DataBolt File Combiner you can easily stack them together into one dataframe.
 
 ![](https://www.databolt.tech/images/combiner-landing-git.png)
 
@@ -11,8 +11,8 @@ Vendors often send large datasets in multiple files. Often there are missing and
 ```python
 
 import glob
-import d6t.stack.combine_csv as d6tc
->>> c = d6tc.CombinerCSV(glob.glob('*.csv'))
+from d6tstack.stack import combine_csv
+>>> c = combine_csv.CombinerCSV(glob.glob('*.csv'))
 
 # quick check if all files have consistent columns
 >>> c.is_all_equal()
