@@ -115,6 +115,7 @@ def check_valid_xls(fname_list):
 
 
 def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
+    cfg_col_sel = [cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in cfg_col_sel]
 
     if cfg_col_rename:
         # check no naming conflicts
@@ -126,11 +127,11 @@ def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
     if cfg_col_sel:
         if cfg_col_rename and cfg_col_sel:
             cfg_col_sel = list(set(cfg_col_rename.values()) | set(cfg_col_sel))
-        dfg = dfg.reindex(columns=['filename']+cfg_col_sel)
+        dfg = dfg.reindex(columns=cfg_col_sel)
 
     return dfg
 
-class PrintLogger(object):        
+class PrintLogger(object):
     def send_log(self, msg, status):
         print(msg,status)
 

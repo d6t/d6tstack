@@ -51,16 +51,15 @@ class CombinerCSV(object):
         cfg_nrows = self.nrows_preview if is_preview else None
         return pd.read_csv(fname, dtype=cfg_dype, sep=self.sep, nrows=cfg_nrows, chunksize=chunksize, **self.read_csv_params)
 
-    def read_csv_all(self, msg=None, is_preview=False, chunksize=None, cfg_col_sel=None, cfg_col_rename={}):
+    def read_csv_all(self, msg=None, is_preview=False, chunksize=None, cfg_col_sel=[], cfg_col_rename={}):
         dfl_all = []
         for fname in self.fname_list:
             if self.logger and msg:
                 self.logger.send_log(msg+' '+ntpath.basename(fname),'ok')
             df=self.read_csv(fname, is_preview=is_preview, chunksize=chunksize)
+            if cfg_col_sel or cfg_col_rename:
+                df = apply_select_rename(df, cfg_col_sel, cfg_col_rename)
             df['filename'] = ntpath.basename(fname)
-            if cfg_col_sel:
-                df = df.reindex(columns=['filename']+cfg_col_sel)
-            df = df.rename(columns=cfg_col_rename)
             dfl_all.append(df)
 
         return dfl_all
@@ -187,7 +186,7 @@ class CombinerCSV(object):
 
 class CombinerCSVAdvanced(object):
 
-    def __init__(self, combiner, cfg_col_sel={}, cfg_col_rename={}):
+    def __init__(self, combiner, cfg_col_sel=[], cfg_col_rename={}):
         self.combiner = combiner
         self.cfg_col_sel = cfg_col_sel 
         self.cfg_col_rename = cfg_col_rename
@@ -210,7 +209,6 @@ class CombinerCSVAdvanced(object):
 
     def combine_save(self, fname_out):
         cfg_dype = str if self.combiner.all_strings else None
-        cfg_col_sel = ['filename']+self.cfg_col_sel
 
         if not os.path.exists(os.path.dirname(fname_out)):
             os.makedirs(os.path.dirname(fname_out))
@@ -218,7 +216,7 @@ class CombinerCSVAdvanced(object):
         fhandle = open(fname_out,'w')
         
         # write header
-        df_all_header = pd.DataFrame(columns=cfg_col_sel)
+        df_all_header = pd.DataFrame(columns=self.cfg_col_sel)
         df_all_header.rename(columns=self.cfg_col_rename).to_csv(fhandle,header=True,index=False)
         # todo: what if file hasn't header
         
@@ -226,9 +224,9 @@ class CombinerCSVAdvanced(object):
             if self.combiner.logger:
                 self.combiner.logger.send_log('processing '+ntpath.basename(fname),'ok')
             for df_chunk in self.combiner.read_csv(fname,chunksize=1e5):
+                if self.cfg_col_sel or self.cfg_col_rename:
+                    df = apply_select_rename(df, self.cfg_col_sel, self.cfg_col_rename)
                 df_chunk['filename'] = ntpath.basename(fname)
-                df_chunk = df_chunk.reindex(columns=cfg_col_sel) # todo: only reindex if need be
-                df_chunk = df_chunk.rename(columns=self.cfg_col_rename) # todo: only rename if need be
                 df_chunk.to_csv(fhandle,header=False,index=False)
                 
         return True

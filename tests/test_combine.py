@@ -509,3 +509,25 @@ def test_preview_dict():
     df = pd.DataFrame({'col1':[0,1],'col2':[0,1]})
     assert preview_dict(df) == {'columns': ['col1', 'col2'], 'rows': {0: [[0]], 1: [[1]]}}
 
+
+from d6t.stack.helpers import apply_select_rename
+
+def test_apply_select_rename():
+    # rename
+    df1 = pd.DataFrame({'a':range(10)})
+    df2 = pd.DataFrame({'b': range(10)})
+    assert df1.equals(apply_select_rename(df2.copy(),[],{'b':'a'}))
+
+    # rename and select 1
+    df2 = pd.DataFrame({'b': range(10),'c': range(10)})
+    assert df1.equals(apply_select_rename(df2.copy(),['b'],{'b':'a'}))
+    assert df1.equals(apply_select_rename(df2.copy(),['a'],{'b':'a'}))
+
+    # rename and select 2
+    df1 = pd.DataFrame({'a':range(10),'c': range(10)})
+    df2 = pd.DataFrame({'b': range(10),'c': range(10)})
+    assert df1[list(set(df1.columns))].equals(apply_select_rename(df2.copy(),['b','c'],{'b':'a'}))
+    assert df1[list(set(df1.columns))].equals(apply_select_rename(df2.copy(),['a','c'],{'b':'a'}))
+
+    with pytest.raises(ValueError) as e:
+        assert df1.equals(apply_select_rename(df2.copy(), ['b', 'c'], {'b': 'c'}))
