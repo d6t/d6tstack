@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='d6tstack',
     version='0.1.0',
-    packages=['stack'],
+    packages=['d6tstack.stack'],
     url='https://github.com/d6t/d6tstack',
     license='MIT',
     author='DataBolt Team',

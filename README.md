@@ -50,18 +50,18 @@ False
 * Out of core functionality
 * Export to CSV or pandas dataframe
 
-[Combiner Examples notebook](https://github.com/d6t/d6t-lib/blob/master/examples-combiner.ipynb)
+[Combiner Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb)
 
 
 ## Installation
 
-Install `pip install git+https://github.com/d6t/d6t-lib.git`
+Install `pip install git+https://github.com/d6t/d6tstack.git`
 
-Update `pip install --upgrade git+https://github.com/d6t/d6t-lib.git`
+Update `pip install --upgrade git+https://github.com/d6t/d6tstack.git`
 
 
 ## Documentation
 
-*  [Combiner Examples notebook](https://github.com/d6t/d6t-lib/blob/master/examples-combiner.ipynb) - Demonstrates combiner usage
+*  [Combiner Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb) - Demonstrates combiner usage
 *  [Official docs](http://d6tstack.readthedocs.io/en/latest/index.html) - Detailed documentation for modules, classes, functions
 *  [www.databolt.tech](https://www.databolt.tech/index-combine.html) - Web app if you don't want to code
