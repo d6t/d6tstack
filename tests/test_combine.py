@@ -20,9 +20,10 @@ Notes:
 
 """
 
-from d6t.stack.combine_files import *
-from d6t.stack.combine_csv import *
-from d6t.stack.combine_xls import *
+from stack.combine_files import *
+from stack.combine_csv import *
+from stack.combine_xls import *
+from stack.helpers import apply_select_rename
 
 import pandas as pd
 import ntpath
@@ -509,8 +510,6 @@ def test_preview_dict():
     df = pd.DataFrame({'col1':[0,1],'col2':[0,1]})
     assert preview_dict(df) == {'columns': ['col1', 'col2'], 'rows': {0: [[0]], 1: [[1]]}}
 
-
-from d6t.stack.helpers import apply_select_rename
 
 def test_apply_select_rename():
     # rename

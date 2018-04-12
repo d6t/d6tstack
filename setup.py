@@ -3,11 +3,11 @@ from setuptools import setup
 setup(
     name='d6tstack',
     version='0.1.0',
-    packages=['d6t', 'd6t.stack', 'tests'],
+    packages=['stack'],
     url='https://github.com/d6t/d6tstack',
     license='MIT',
     author='DataBolt Team',
-    author_email='sales@databolt.tech',
+    author_email='support@databolt.tech',
     description='Databolt Python Library',
     long_description='Databolt python library - accelerate data engineering. '
                      'DataBolt provides tools to reduce the time it takes to get your data ready for '
