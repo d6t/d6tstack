@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.dirname(os.path.abspath('.')))  # todo: why is this not working?
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('.'))))
 sys.path.insert(0, os.path.join(os.path.dirname((os.path.abspath('.'))), "d6t"))
-sys.path.insert(0, os.path.abspath('/vagrant/d6t-lib/d6t'))
+sys.path.insert(0, os.path.abspath('/vagrant/d6tstack/d6tstack'))
 
 # -- General configuration ------------------------------------------------
 
@@ -54,7 +54,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'd6t'
+project = 'd6tstack'
 copyright = '2017, databolt'
 author = 'databolt'
 
@@ -122,7 +122,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'd6t-lib-doc'
+htmlhelp_basename = 'd6tstack-doc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -148,7 +148,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'd6t-lib.tex', 'd6t-lib Documentation',
+    (master_doc, 'd6tstack.tex', 'd6tstack Documentation',
      'nn', 'manual'),
 ]
 
@@ -157,7 +157,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'd6t-lib', 'd6t-lib Documentation',
+    (master_doc, 'd6tstack', 'd6tstack Documentation',
      [author], 1)
 ]
 
@@ -167,7 +167,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'd6t-lib', 'd6t-lib Documentation',
-     author, 'd6t-lib', 'Databolt python library - Accelerate data engineering',
+    (master_doc, 'd6tstack', 'd6tstack Documentation',
+     author, 'd6tstack', 'Databolt python library - Accelerate data engineering',
      'Miscellaneous'),
 ]

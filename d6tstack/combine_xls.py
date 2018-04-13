@@ -9,7 +9,7 @@ import xlrd
 
 from .helpers import check_valid_xls
 from .sniffer import XLSSniffer
-from .read_excel_adv import ExcelAdvanced
+from .read_excel_adv import read_excel_advanced
 
 #******************************************************************
 # convertor
@@ -97,11 +97,10 @@ class XLStoCSVMultiFile(object):
             self.logger.send_log('converting file: '+ntpath.basename(fname)+' | sheet: '+ str(self.cfg_xls_sheets_sel[fname]),'ok')
 
         fname_out = fname+'-'+str(self.cfg_xls_sheets_sel[fname])+'.csv'
-        ea = ExcelAdvanced([fname])
-        df = ea.read_excel_adv(fname, remove_blank_cols=remove_blank_cols, remove_blank_rows=remove_blank_rows,
-                               collapse_header=collapse_header, header_xls_range=header_xls_range,
-                               header_xls_start=header_xls_start, header_xls_end=header_xls_end,
-                               sheet_name=self.cfg_xls_sheets_sel[fname], dtype='str')
+        df = read_excel_advanced(fname, remove_blank_cols=remove_blank_cols, remove_blank_rows=remove_blank_rows,
+                                 collapse_header=collapse_header, header_xls_range=header_xls_range,
+                                 header_xls_start=header_xls_start, header_xls_end=header_xls_end,
+                                 sheet_name=self.cfg_xls_sheets_sel[fname], dtype='str')
         df.to_csv(fname_out,index=False)
 
         return fname_out

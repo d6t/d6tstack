@@ -1,9 +1,9 @@
-d6t-lib
-=======
+d6tstack
+========
 
 .. toctree::
    :maxdepth: 4
 
-   d6t
+   d6tstack
    setup
    tests

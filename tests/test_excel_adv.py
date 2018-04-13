@@ -20,7 +20,7 @@ Notes:
 
 """
 
-from d6t.stack.stack.read_excel_adv import *
+from d6tstack.read_excel_adv import *
 
 fname_base_input_dir = 'test-data/excel_adv_data/'
 fname_base_out_dir = 'test-data/output/'
@@ -32,6 +32,12 @@ def test_read_excel_adv():
                        remove_blank_rows=True, collapse_header=True, header_xls_start="A8",
                        header_xls_end="O9")
     df = ea.read_excel_adv(fname)
+    assert 'Balance' in df.columns
+    assert 'Billing Type' in df.columns
+
+    df = read_excel_advanced(fname, remove_blank_cols=True,
+                             remove_blank_rows=True, collapse_header=True, header_xls_start="A8",
+                             header_xls_end="O9")
     assert 'Balance' in df.columns
     assert 'Billing Type' in df.columns
 
