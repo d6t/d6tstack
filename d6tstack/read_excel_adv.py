@@ -4,13 +4,37 @@ from .helpers_ui import *
 from openpyxl.utils import coordinate_from_string
 
 
+def read_excel_advanced(fname, remove_blank_cols=False, remove_blank_rows=False, collapse_header=False,
+                        header_xls_range=None, header_xls_start=None, header_xls_end=None, nrows_preview=3,
+                        logger=None, **kwds):
+    """
+    Excel Advanced Function - Set header ranges and remove blank columns and rows while converting excel to dataframe
+
+    Args:
+        fname_list (list): excel file names, eg ['a.xls','b.xls']
+        remove_blank_cols (boolean): to remove blank columns in output (default: False)
+        remove_blank_rows (boolean): to remove blank rows in output (default: False)
+        collapse_header (boolean): to convert multiline header to a single line string (default: False)
+        header_xls_range (string): range of headers in excel, eg: A4:B16
+        header_xls_start (string): Starting cell of excel for header range, eg: A4
+        header_xls_end (string): End cell of excel for header range, eg: B16
+        nrows_preview (integer): Initial number of rows to be used for preview columns (default: 3)
+        log_pusher (object): logger object that sends pusher logs
+
+    Returns:
+         df (dataframe): pandas dataframe
+    """
+    ea = ExcelAdvanced([fname], remove_blank_cols=remove_blank_cols, remove_blank_rows=remove_blank_rows,
+                       collapse_header=collapse_header, header_xls_range=header_xls_range,
+                       header_xls_start=header_xls_start, header_xls_end=header_xls_end, nrows_preview=nrows_preview,
+                       logger=logger)
+    return ea.read_excel_adv(fname, **kwds)
+
+
 class ExcelAdvanced:
     """
 
         Excel Advanced Class - Checks columns, generates preview, convert excel to dataframes.
-
-        Raises:
-            ValueError: if header_xls_range is invalid or header_xls_start and header_xls_end is invalid
 
         Args:
             fname_list (list): excel file names, eg ['a.xls','b.xls']
@@ -35,9 +59,6 @@ class ExcelAdvanced:
             if header_xls_range:
                 header_xls_range = header_xls_range.split(':')
                 header_xls_start , header_xls_end = header_xls_range
-            else:
-                # Return with error message - Discuss with Norman
-                raise Exception
         self.header_xls_start = header_xls_start
         self.header_xls_end = header_xls_end
         self.nrows_preview = nrows_preview
@@ -52,27 +73,30 @@ class ExcelAdvanced:
         Returns:
              dataframe
         """
-        scol, srow = coordinate_from_string(self.header_xls_start)
-        ecol, erow = coordinate_from_string(self.header_xls_end)
+        header = []
+        if self.header_xls_start and self.header_xls_end:
+            scol, srow = coordinate_from_string(self.header_xls_start)
+            ecol, erow = coordinate_from_string(self.header_xls_end)
 
-        # header, skiprows, usecols
-        header = [x for x in range(erow - srow + 1)]
-        usecols = scol + ":" + ecol
-        skiprows = srow - 1
+            # header, skiprows, usecols
+            header = [x for x in range(erow - srow + 1)]
+            usecols = scol + ":" + ecol
+            skiprows = srow - 1
 
-        if is_preview:
-            workbook = pd.ExcelFile(io)
+            if is_preview:
+                workbook = pd.ExcelFile(io)
 
-            rows = workbook.book.sheet_by_index(0).nrows
+                rows = workbook.book.sheet_by_index(0).nrows
 
-            # Get only preview rows. Way to implement nrows (in read_csv)
-            skip_footer = (rows - skiprows - self.nrows_preview)
-            print(skip_footer)
+                # Get only preview rows. Way to implement nrows (in read_csv)
+                skip_footer = (rows - skiprows - self.nrows_preview)
 
-            df = pd.read_excel(io, header=header, skiprows=skiprows, usecols=usecols,
-                               skip_footer=skip_footer, **kwds)
+                df = pd.read_excel(io, header=header, skiprows=skiprows, usecols=usecols,
+                                   skip_footer=skip_footer, **kwds)
+            else:
+                df = pd.read_excel(io, header=header, skiprows=skiprows, usecols=usecols, **kwds)
         else:
-            df = pd.read_excel(io, header=header, skiprows=skiprows, usecols=usecols, **kwds)
+            df = pd.read_excel(io, **kwds)
 
         if self.remove_blank_cols:
             df = df.dropna(axis='columns', how='all')

@@ -140,19 +140,19 @@ def combine_files(fname_list, fname_out_folder, log_pusher, fname_out_base='comb
 
         cfg_sheets = cfg_settings['xls_sheets_sel']
 
-        if not 'remove_blank_cols' not in cfg_settings:
+        if 'remove_blank_cols' not in cfg_settings:
             cfg_settings['remove_blank_cols'] = False
-        if not 'remove_blank_cols' not in cfg_settings:
+        if 'remove_blank_rows' not in cfg_settings:
             cfg_settings['remove_blank_rows'] = False
-        if not 'collapse_header' not in cfg_settings:
+        if 'collapse_header' not in cfg_settings:
             cfg_settings['collapse_header'] = False
 
         if not 'xls_sheets_sel_fnames' in cfg_settings or cfg_settings['xls_sheets_sel_processed']!=cfg_settings['xls_sheets_sel']:
 
             converter = XLStoCSVMultiFile(fname_list, cfg_settings['xls_sheets_sel_mode'], cfg_settings['xls_sheets_sel'], log_pusher)
             fnames_converted = converter.convert_all(cfg_settings['remove_blank_cols'], cfg_settings['remove_blank_rows'],
-                                                     cfg_settings['collapse_header'], cfg_settings['header_xls_range'],
-                                                     cfg_settings['header_xls_start'], cfg_settings['header_xls_end'])
+                                                     cfg_settings['collapse_header'], cfg_settings.get('header_xls_range'),
+                                                     cfg_settings.get('header_xls_start'), cfg_settings.get('header_xls_end'))
 
             # update settings
             cfg_settings['xls_sheets_sel_fnames'] = fnames_converted
@@ -180,8 +180,12 @@ def combine_files(fname_list, fname_out_folder, log_pusher, fname_out_base='comb
     #******************************************************************
 
     # data for select columns
-    combiner = CombinerCSV(fname_list=fname_list, all_strings=True, sep=cfg_settings['csv_sniff']['delim'], header_row=cfg_settings['csv_sniff']['header'], skiprows=cfg_settings['csv_sniff']['skiprows'], nrows_preview=5, logger=log_pusher)
-    
+    #combiner = CombinerCSV(fname_list=fname_list, all_strings=True, sep=cfg_settings['csv_sniff']['delim'], header_row=cfg_settings['csv_sniff']['header'], skiprows=cfg_settings['csv_sniff']['skiprows'], nrows_preview=5, logger=log_pusher)
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True, sep=cfg_settings['csv_sniff']['delim'],
+                           read_csv_params={'header': cfg_settings['csv_sniff']['header'],
+                                            'skiprows': cfg_settings['csv_sniff']['skiprows']},
+                           nrows_preview=5, logger=log_pusher)
+
     if not 'columns_select_mode' in cfg_settings:
         log_pusher.send_log('determine columns mode','ok')
         

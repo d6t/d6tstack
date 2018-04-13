@@ -20,10 +20,10 @@ Notes:
 
 """
 
-from stack.combine_files import *
-from stack.combine_csv import *
-from stack.combine_xls import *
-from stack.helpers import apply_select_rename
+from d6tstack.combine_files import *
+from d6tstack.combine_csv import *
+from d6tstack.combine_xls import *
+from d6tstack.helpers import apply_select_rename
 
 import pandas as pd
 import ntpath
@@ -410,8 +410,8 @@ def test_combine_csv(create_files_csv):
     assert df.equals(df_chk)
 
     r = combine_files(create_files_csv, cfg_fname_base_out_dir, logger, cfg_return_df=False)
-    assert r['status']=='complete'
-    df = pd.read_csv(cfg_fname_base_out_dir+'/combined.csv',dtype=str)
+    assert r['status'] == 'complete'
+    df = pd.read_csv(cfg_fname_base_out_dir+'/combined.csv', dtype=str)
     assert df.equals(df2)
     df_sample = pd.read_csv(cfg_fname_base_out_dir+'/combined-sample.csv',dtype=str)
     assert df_sample.equals(df2.groupby('filename').head(5).set_index('filename').reset_index())
