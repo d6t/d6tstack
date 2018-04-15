@@ -121,6 +121,10 @@ class CombinerCSV(object):
 
         return col_preview
 
+    def _preview_available(self):
+        if not self.col_preview:
+            self.preview_columns()
+
     def is_all_equal(self):
         """
         Return all files equal after checking if preview_columns has been run. If not run it.
@@ -128,10 +132,8 @@ class CombinerCSV(object):
         Returns:
              is_all_equal (boolean): If all files equal?
         """
-        if self.col_preview:
-            return self.col_preview['is_all_equal']
-        else:
-            return self.preview_columns()['is_all_equal']
+        self._preview_available()
+        return self.col_preview['is_all_equal']
 
     def is_col_present(self):
         """
@@ -140,10 +142,28 @@ class CombinerCSV(object):
         Returns:
              bool: if columns present
         """
-        if self.col_preview:
-            return self.col_preview['df_columns_present'].reset_index(drop=True)
-        else:
-            return self.preview_columns()['df_columns_present'].reset_index(drop=True)
+        self._preview_available()
+        return self.col_preview['df_columns_present'].reset_index(drop=True)
+
+    def is_col_present_unique(self):
+        """
+        Shows unique columns by file
+
+        Returns:
+             bool: if columns present
+        """
+        self._preview_available()
+        return self.is_col_present().set_index('filename')[self.col_preview['columns_unique']]
+
+    def is_col_present_common(self):
+        """
+        Shows common columns by file        
+
+        Returns:
+             bool: if columns present
+        """
+        self._preview_available()
+        return self.is_col_present().set_index('filename')[self.col_preview['columns_common']]
 
     def preview_combine(self, is_col_common=False):
         """
