@@ -4,6 +4,9 @@ temp/
 fiddle*
 .pytest_cache/
 
+# add this manually
+test-data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

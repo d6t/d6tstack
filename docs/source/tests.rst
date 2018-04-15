@@ -12,6 +12,14 @@ tests.test\_combine module
     :undoc-members:
     :show-inheritance:
 
+tests.test\_excel\_adv module
+-----------------------------
+
+.. automodule:: tests.test_excel_adv
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------
