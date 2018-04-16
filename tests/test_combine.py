@@ -404,7 +404,7 @@ def test_combine_csv(create_files_csv):
     assert r['status']=='complete'
     df = r['data']
     df2 = r['data'].copy().reset_index(drop=True)
-    df = df.sort_values('date').drop(['filename'],axis=1)
+    df = df.sort_values('date').drop(['filename'], axis=1)
     df_chk = create_files_df_clean_combine()
     assert df.equals(df_chk)
 
