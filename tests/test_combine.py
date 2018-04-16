@@ -405,16 +405,17 @@ def test_combine_csv(create_files_csv):
     assert r['status']=='complete'
     df = r['data']
     df2 = r['data'].copy().reset_index(drop=True)
-    df = df.sort_values('date').drop(['filename'],axis=1)
+    df = df.sort_values('date').drop(['filename'], axis=1)
     df_chk = create_files_df_clean_combine()
     assert df.equals(df_chk)
 
     r = combine_files(create_files_csv, cfg_fname_base_out_dir, logger, cfg_return_df=False)
     assert r['status'] == 'complete'
-    df = pd.read_csv(cfg_fname_base_out_dir+'/combined.csv', dtype=str)
+    df = pd.read_csv(cfg_fname_base_out_dir+'/combined.csv', dtype=str, index_col=False)
     assert df.equals(df2)
-    df_sample = pd.read_csv(cfg_fname_base_out_dir+'/combined-sample.csv',dtype=str)
-    assert df_sample.equals(df2.groupby('filename').head(5).set_index('filename').reset_index())
+    df_sample = pd.read_csv(cfg_fname_base_out_dir+'/combined-sample.csv', dtype=str)
+    df_sample = df_sample.sort_index(axis=1)
+    assert df_sample.equals(df2.groupby('filename').head(5).set_index('filename').reset_index().sort_index(axis=1))
 
 
 def test_combine_csv_colmismatch(create_files_csv_colmismatch):

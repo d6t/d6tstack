@@ -1,4 +1,4 @@
-cost,date,profit,sales
+cost,date,profit,sales,filename
 -80,2011-01-01,20,100,test-data-input-csv-clean-jan.csv
 -80,2011-01-02,20,100,test-data-input-csv-clean-jan.csv
 -80,2011-01-03,20,100,test-data-input-csv-clean-jan.csv
