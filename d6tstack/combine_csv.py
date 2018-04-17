@@ -31,6 +31,7 @@ class CombinerCSV(object):
     Args:
         fname_list (list): file names, eg ['a.csv','b.csv']
         sep (string): CSV delimiter, see pandas.read_csv()
+        has_header (boolean): data has header row 
         all_strings (boolean): read all values as strings (faster) 
         header_row (int): header row, see pandas.read_csv()
         skiprows (int): rows to skip at top of file, see pandas.read_csv()
@@ -39,21 +40,22 @@ class CombinerCSV(object):
 
     """
 
-    def __init__(self, fname_list, sep=',', all_strings=False, nrows_preview=3, read_csv_params=None, logger=None):
+    def __init__(self, fname_list, sep=',', has_header = True, all_strings=False, nrows_preview=3, read_csv_params=None, logger=None):
         self.fname_list = fname_list
-        self.sep = sep
         self.all_strings = all_strings
         self.nrows_preview = nrows_preview
         self.read_csv_params = read_csv_params
         if not self.read_csv_params:
             self.read_csv_params = {}
+        self.read_csv_params['header'] = 0 if has_header else None
+        self.read_csv_params['sep'] = sep
         self.logger = logger
         self.col_preview = None
 
     def read_csv(self, fname, is_preview=False, chunksize=None):
         cfg_dype = str if self.all_strings else None
         cfg_nrows = self.nrows_preview if is_preview else None
-        return pd.read_csv(fname, dtype=cfg_dype, sep=self.sep, nrows=cfg_nrows, chunksize=chunksize,
+        return pd.read_csv(fname, dtype=cfg_dype, nrows=cfg_nrows, chunksize=chunksize,
                            **self.read_csv_params)
 
     def read_csv_all(self, msg=None, is_preview=False, chunksize=None, cfg_col_sel=None, cfg_col_rename=None):
