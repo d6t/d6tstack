@@ -10,7 +10,7 @@ from .helpers_ui import *
 
 
 # ******************************************************************
-# combiner
+# helpers
 # ******************************************************************
 
 def sniff_settings_csv(fname_list):
@@ -22,6 +22,30 @@ def sniff_settings_csv(fname_list):
     csv_sniff['header'] = 0 if sniff.has_header() else None
     return csv_sniff
 
+
+def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
+
+    if cfg_col_rename:
+        # check no naming conflicts
+        cfg_col_sel2 = list(set([cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in dfg.columns.tolist()])) # set of columns after rename
+        df_rename_count = collections.Counter(cfg_col_sel2)
+        if df_rename_count:
+            if max(df_rename_count.values()) > 1: # would the rename create naming conflict?
+                raise ValueError('Renaming conflict',[(k,v) for k,v in df_rename_count.items() if v>1])
+        dfg = dfg.rename(columns=cfg_col_rename)
+    if cfg_col_sel:
+        if cfg_col_rename and cfg_col_sel:
+            cfg_col_sel = list(set(cfg_col_rename.values()) | set(cfg_col_sel))
+        max(collections.Counter(cfg_col_sel).values())
+        max(collections.Counter(dfg.columns).values())
+        dfg = dfg.reindex(columns=cfg_col_sel)
+
+    return dfg
+
+
+# ******************************************************************
+# combiner
+# ******************************************************************
 
 class CombinerCSV(object):
     """
@@ -216,14 +240,22 @@ class CombinerCSV(object):
         return df_all
 
 
+# ******************************************************************
+# advanced
+# ******************************************************************
+
 class CombinerCSVAdvanced(object):
 
     def __init__(self, combiner, cfg_col_sel=None, cfg_col_rename=None):
         self.combiner = combiner
         self.cfg_col_sel = cfg_col_sel
         self.cfg_col_rename = cfg_col_rename
-        if not self.cfg_col_sel:
+
+        if max(collections.Counter(cfg_col_sel).values())>1:
+            return ValueError('Duplicate entries in cfg_col_sel')
+        elif not self.cfg_col_sel:
             self.cfg_col_sel = []
+
         if not self.cfg_col_rename:
             self.cfg_col_rename = {}
 
@@ -245,7 +277,9 @@ class CombinerCSVAdvanced(object):
         return df_all
 
     def combine_save(self, fname_out):
-        cfg_dype = str if self.combiner.all_strings else None
+
+        if not self.cfg_col_sel:
+            raise ValueError('Need to provide cfg_col_sel in constructor to use combine_save()')
 
         if not os.path.exists(os.path.dirname(fname_out)):
             os.makedirs(os.path.dirname(fname_out))
@@ -253,8 +287,10 @@ class CombinerCSVAdvanced(object):
         fhandle = open(fname_out, 'w')
 
         # write header
-        df_all_header = pd.DataFrame(columns=self.cfg_col_sel)
-        df_all_header.rename(columns=self.cfg_col_rename).to_csv(fhandle, header=True, index=False)
+        cfg_col_sel2 = list(set([self.cfg_col_rename[k] if k in self.cfg_col_rename.keys() else k for k in self.cfg_col_sel])) # set of columns after rename
+
+        df_all_header = pd.DataFrame(columns=cfg_col_sel2 + ['filename', ])
+        df_all_header.to_csv(fhandle, header=True, index=False)
         # todo: what if file hasn't header
 
         for fname in self.combiner.fname_list:
@@ -262,7 +298,7 @@ class CombinerCSVAdvanced(object):
                 self.combiner.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
             for df_chunk in self.combiner.read_csv(fname, chunksize=1e5):
                 if self.cfg_col_sel or self.cfg_col_rename:
-                    df = apply_select_rename(df_chunk, self.cfg_col_sel, self.cfg_col_rename)
+                    df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, self.cfg_col_rename)
                 df_chunk['filename'] = ntpath.basename(fname)
                 df_chunk.to_csv(fhandle, header=False, index=False)
 

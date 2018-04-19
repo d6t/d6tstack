@@ -23,8 +23,7 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.dirname(os.path.abspath('.')))  # todo: why is this not working?
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('.'))))
-sys.path.insert(0, os.path.join(os.path.dirname((os.path.abspath('.'))), "d6t"))
-sys.path.insert(0, os.path.abspath('/vagrant/d6tstack/d6tstack'))
+sys.path.insert(0, os.path.join(os.path.dirname((os.path.abspath('.'))), "d6tstack"))
 
 # -- General configuration ------------------------------------------------
 
@@ -38,7 +37,7 @@ sys.path.insert(0, os.path.abspath('/vagrant/d6tstack/d6tstack'))
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.todo',
               'sphinx.ext.viewcode',
-              # 'sphinx.ext.githubpages',
+              'sphinx.ext.githubpages',
               'sphinxcontrib.napoleon']
 
 # Add any paths that contain templates here, relative to this directory.
