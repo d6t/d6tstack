@@ -411,9 +411,11 @@ def test_combine_csv(create_files_csv):
     r = combine_files(create_files_csv, cfg_fname_base_out_dir, logger, cfg_return_df=False)
     assert r['status'] == 'complete'
     df = pd.read_csv(cfg_fname_base_out_dir+'/combined.csv', dtype=str)
-    assert df.equals(df2)
+    assert sorted(df.columns)==sorted(df2.columns)
+    assert df.equals(df2[df.columns])
     df_sample = pd.read_csv(cfg_fname_base_out_dir+'/combined-sample.csv',dtype=str)
-    assert df_sample.equals(df2.groupby('filename').head(5).set_index('filename').reset_index())
+    assert sorted(df_sample.columns)==sorted(df2.columns)
+    assert df_sample.equals(df2.groupby('filename').head(5).set_index('filename').reset_index()[df_sample.columns])
 
 
 def test_combine_csv_colmismatch(create_files_csv_colmismatch):

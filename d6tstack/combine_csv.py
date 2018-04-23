@@ -36,6 +36,8 @@ def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
     if cfg_col_sel:
         if cfg_col_rename:
             cfg_col_sel2 = list(set([cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in cfg_col_sel])) # set of columns after rename
+        else:
+            cfg_col_sel2 = cfg_col_sel
         dfg = dfg.reindex(columns=cfg_col_sel2)
 
     return dfg
@@ -242,7 +244,18 @@ class CombinerCSV(object):
 # advanced
 # ******************************************************************
 
+
 class CombinerCSVAdvanced(object):
+    """
+
+    Combiner class with advanced features. Allows renaming, selecting of columns and out-of-core combining
+
+    Args:
+        combiner (object): instance of CombinerCSV
+        cfg_col_sel (list): list of column names to keep
+        cfg_col_rename (dict): dict of columns to rename `{'name_old':'name_new'}
+
+    """
 
     def __init__(self, combiner, cfg_col_sel=None, cfg_col_rename=None):
         self.combiner = combiner
@@ -259,23 +272,55 @@ class CombinerCSVAdvanced(object):
             self.cfg_col_rename = {}
 
     def preview_combine(self):
+        """
+
+        Preview of combines all files
+
+        Returns:
+            df_all (dataframe): pandas dataframe with combined data from all files, only self.combiner.nrows_preview top rows
+
+        """
         df_all = self.combiner.read_csv_all(msg='reading preview file', is_preview=True, cfg_col_sel=self.cfg_col_sel,
                                             cfg_col_rename=self.cfg_col_rename)
         df_all = pd.concat(df_all)
         return df_all
 
     def combine_preview_save(self, fname_out):
+        """
+
+        Save preview to CSV
+
+        Args:
+            fname_out (str): filename
+
+        """
         df_all_preview = self.preview_combine()
         df_all_preview.to_csv(fname_out, index=False)
         return True
 
     def combine(self):
+        """
+
+        Combines all files. This is in-memory. For out-of-core use `combine_save()`
+
+        Returns:
+            df_all (dataframe): pandas dataframe with combined data from all files
+
+        """
         df_all = self.combiner.read_csv_all(msg='reading full file', cfg_col_sel=self.cfg_col_sel,
                                             cfg_col_rename=self.cfg_col_rename)
         df_all = pd.concat(df_all)
         return df_all
 
     def combine_save(self, fname_out):
+        """
+
+        Save combined data directly to CSV. This implements out-of-core combine functionality to combine large files. For in-memory use `combine()`
+
+        Args:
+            fname_out (str): filename
+
+        """
 
         if not self.cfg_col_sel:
             raise ValueError('Need to provide cfg_col_sel in constructor to use combine_save()')
