@@ -34,11 +34,9 @@ def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
                 raise ValueError('Renaming conflict',[(k,v) for k,v in df_rename_count.items() if v>1])
         dfg = dfg.rename(columns=cfg_col_rename)
     if cfg_col_sel:
-        if cfg_col_rename and cfg_col_sel:
-            cfg_col_sel = list(set(cfg_col_rename.values()) | set(cfg_col_sel))
-        max(collections.Counter(cfg_col_sel).values())
-        max(collections.Counter(dfg.columns).values())
-        dfg = dfg.reindex(columns=cfg_col_sel)
+        if cfg_col_rename:
+            cfg_col_sel2 = list(set([cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in cfg_col_sel])) # set of columns after rename
+        dfg = dfg.reindex(columns=cfg_col_sel2)
 
     return dfg
 
@@ -251,10 +249,11 @@ class CombinerCSVAdvanced(object):
         self.cfg_col_sel = cfg_col_sel
         self.cfg_col_rename = cfg_col_rename
 
-        if max(collections.Counter(cfg_col_sel).values())>1:
-            return ValueError('Duplicate entries in cfg_col_sel')
-        elif not self.cfg_col_sel:
+        if not self.cfg_col_sel:
             self.cfg_col_sel = []
+        else:
+            if max(collections.Counter(cfg_col_sel).values())>1:
+                raise ValueError('Duplicate entries in cfg_col_sel')
 
         if not self.cfg_col_rename:
             self.cfg_col_rename = {}
