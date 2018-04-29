@@ -63,5 +63,6 @@ Update `pip install --upgrade git+https://github.com/d6t/d6tstack.git`
 ## Documentation
 
 *  [Combiner Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb) - Demonstrates combiner usage
+*  [Dask Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-dask.ipynb) - How to use d6tstack to solve Dask input file problems
 *  [Official docs](http://d6tstack.readthedocs.io/en/latest/index.html) - Detailed documentation for modules, classes, functions
 *  [www.databolt.tech](https://www.databolt.tech/index-combine.html) - Web app if you don't want to code

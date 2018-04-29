@@ -312,7 +312,7 @@ class CombinerCSVAdvanced(object):
         df_all = pd.concat(df_all)
         return df_all
 
-    def combine_save(self, fname_out):
+    def combine_save(self, fname_out, chunksize=1e10):
         """
 
         Save combined data directly to CSV. This implements out-of-core combine functionality to combine large files. For in-memory use `combine()`
@@ -340,7 +340,7 @@ class CombinerCSVAdvanced(object):
         for fname in self.combiner.fname_list:
             if self.combiner.logger:
                 self.combiner.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
-            for df_chunk in self.combiner.read_csv(fname, chunksize=1e5):
+            for df_chunk in self.combiner.read_csv(fname, chunksize=chunksize):
                 if self.cfg_col_sel or self.cfg_col_rename:
                     df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, self.cfg_col_rename)
                 df_chunk['filename'] = ntpath.basename(fname)
