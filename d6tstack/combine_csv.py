@@ -65,6 +65,8 @@ class CombinerCSV(object):
     """
 
     def __init__(self, fname_list, sep=',', has_header = True, all_strings=False, nrows_preview=3, read_csv_params=None, logger=None):
+        if not fname_list:
+            raise ValueError("Filename list should not be empty")
         self.fname_list = fname_list
         self.all_strings = all_strings
         self.nrows_preview = nrows_preview
@@ -82,7 +84,8 @@ class CombinerCSV(object):
         return pd.read_csv(fname, dtype=cfg_dype, nrows=cfg_nrows, chunksize=chunksize,
                            **self.read_csv_params)
 
-    def read_csv_all(self, msg=None, is_preview=False, chunksize=None, cfg_col_sel=None, cfg_col_rename=None):
+    def read_csv_all(self, msg=None, is_preview=False, chunksize=None, cfg_col_sel=None, cfg_col_rename=None,
+                     is_filename_col=True):
         dfl_all = []
         if not cfg_col_sel:
             cfg_col_sel = []
@@ -94,7 +97,8 @@ class CombinerCSV(object):
             df = self.read_csv(fname, is_preview=is_preview, chunksize=chunksize)
             if cfg_col_sel or cfg_col_rename:
                 df = apply_select_rename(df, cfg_col_sel, cfg_col_rename)
-            df['filename'] = ntpath.basename(fname)
+            if is_filename_col:
+                df['filename'] = ntpath.basename(fname)
             dfl_all.append(df)
 
         return dfl_all
@@ -208,7 +212,7 @@ class CombinerCSV(object):
         """
         return self.combine(is_col_common, is_preview=True)
 
-    def combine(self, is_col_common=False, is_preview=False):
+    def combine(self, is_col_common=False, is_preview=False, is_filename_col=True):
         """
         
         Combines all files
@@ -219,13 +223,14 @@ class CombinerCSV(object):
         Args:
             is_col_common (bool): keep only common columns? If `false` returns all columns filled with nans
             is_preview (bool): read only self.nrows_preview top rows
+            is_filename_col (bool): add filename column to output data frame. If `False`, will not add column.
 
         Returns:
             df_all (dataframe): pandas dataframe with combined data from all files
 
         """
 
-        dfl_all = self.read_csv_all('reading full file', is_preview=is_preview)
+        dfl_all = self.read_csv_all('reading full file', is_preview=is_preview, is_filename_col=is_filename_col)
 
         if self.logger:
             self.logger.send_log('combining files', 'ok')
@@ -257,7 +262,7 @@ class CombinerCSVAdvanced(object):
 
     """
 
-    def __init__(self, combiner, cfg_col_sel=None, cfg_col_rename=None):
+    def __init__(self, combiner: CombinerCSV, cfg_col_sel=None, cfg_col_rename=None):
         self.combiner = combiner
         self.cfg_col_sel = cfg_col_sel
         self.cfg_col_rename = cfg_col_rename
@@ -298,7 +303,7 @@ class CombinerCSVAdvanced(object):
         df_all_preview.to_csv(fname_out, index=False)
         return True
 
-    def combine(self):
+    def combine(self, is_filename_col=True):
         """
 
         Combines all files. This is in-memory. For out-of-core use `combine_save()`
@@ -308,11 +313,11 @@ class CombinerCSVAdvanced(object):
 
         """
         df_all = self.combiner.read_csv_all(msg='reading full file', cfg_col_sel=self.cfg_col_sel,
-                                            cfg_col_rename=self.cfg_col_rename)
+                                            cfg_col_rename=self.cfg_col_rename, is_filename_col=is_filename_col)
         df_all = pd.concat(df_all)
         return df_all
 
-    def combine_save(self, fname_out, chunksize=1e10):
+    def combine_save(self, fname_out, chunksize=1e10, is_filename_col=True):
         """
 
         Save combined data directly to CSV. This implements out-of-core combine functionality to combine large files. For in-memory use `combine()`
@@ -333,7 +338,10 @@ class CombinerCSVAdvanced(object):
         # write header
         cfg_col_sel2 = list(set([self.cfg_col_rename[k] if k in self.cfg_col_rename.keys() else k for k in self.cfg_col_sel])) # set of columns after rename
 
-        df_all_header = pd.DataFrame(columns=cfg_col_sel2 + ['filename', ])
+        columns = cfg_col_sel2
+        if is_filename_col:
+            columns += ['filename', ]
+        df_all_header = pd.DataFrame(columns=columns)
         df_all_header.to_csv(fhandle, header=True, index=False)
         # todo: what if file hasn't header
 
@@ -343,7 +351,57 @@ class CombinerCSVAdvanced(object):
             for df_chunk in self.combiner.read_csv(fname, chunksize=chunksize):
                 if self.cfg_col_sel or self.cfg_col_rename:
                     df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, self.cfg_col_rename)
-                df_chunk['filename'] = ntpath.basename(fname)
+                if is_filename_col:
+                    df_chunk['filename'] = ntpath.basename(fname)
                 df_chunk.to_csv(fhandle, header=False, index=False)
+
+        return True
+
+    def match_save(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10, is_filename_col=True):
+        """
+
+        Save combined data directly to CSV. This implements out-of-core combine functionality to combine large files. For in-memory use `combine()`
+
+        Args:
+            output_dir (str): output directory to save, default input file directory, optional
+            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
+            overwrite (bool): overwrite file if exists, default True, optional
+
+        """
+
+        if not self.cfg_col_sel:
+            raise ValueError('Need to provide cfg_col_sel in constructor to use combine_save()')
+
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        cfg_col_sel2 = list(set([self.cfg_col_rename[k] if k in self.cfg_col_rename.keys() else k for k in self.cfg_col_sel])) # set of columns after rename
+
+        columns = cfg_col_sel2
+        if is_filename_col:
+            columns += ['filename', ]
+        df_all_header = pd.DataFrame(columns=columns)
+
+        for fname in self.combiner.fname_list:
+            if self.combiner.logger:
+                self.combiner.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
+            basename = os.path.basename(fname)
+            name_with_ext = os.path.splitext(basename)
+            new_name = name_with_ext[0] + suffix
+            if len(name_with_ext) == 2:
+                new_name += name_with_ext[1]
+            if output_dir:
+                fhandle = os.path.join(output_dir, new_name)
+            else:
+                fhandle = os.path.join(os.path.dirname(fname), new_name)
+            if overwrite or not os.path.isfile(fhandle):
+                # todo: warning to be raised - how?
+                df_all_header.to_csv(fhandle, header=True, index=False)
+                for df_chunk in self.combiner.read_csv(fname, chunksize=chunksize):
+                    if self.cfg_col_sel or self.cfg_col_rename:
+                        df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, self.cfg_col_rename)
+                    if is_filename_col:
+                        df_chunk['filename'] = ntpath.basename(new_name)
+                    df_chunk.to_csv(fhandle, header=False, index=False)
 
         return True

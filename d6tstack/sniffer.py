@@ -204,6 +204,8 @@ class XLSSniffer(object):
     """
 
     def __init__(self, fname_list, logger=None):
+        if not fname_list:
+            raise ValueError("Filename list should not be empty")
         self.fname_list = fname_list
         self.logger = logger
         check_valid_xls(self.fname_list)

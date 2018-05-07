@@ -1,13 +1,9 @@
-import os
+import os.path
 import ntpath
 
 import numpy as np
 import pandas as pd
 
-import openpyxl
-import xlrd
-
-from .helpers import check_valid_xls
 from .sniffer import XLSSniffer
 from .read_excel_adv import read_excel_advanced
 
@@ -29,16 +25,26 @@ class XLStoCSVMultiFile(object):
             * ``idx_global``: select by index, one index for all files
 
         cfg_xls_sheets_sel (list): values to select tabs **NEEDS TO BE IN THE SAME ORDER AS `fname_list`**
+        if_exists (str): Possible values: skip and replace, default: skip, optional
+        output_dir (str): If present, file is saved in given directory, optional
         logger (object): logger object with send_log(), optional
 
     """
 
-
     def __init__(self, fname_list, cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel,
-                 logger=None):
+                 logger=None, if_exists='skip', output_dir=None):
+        if not fname_list:
+            raise ValueError("Filename list should not be empty")
+        print("="*20)
+        print(if_exists)
+        print("="*20)
+        if if_exists not in ['skip', 'replace']:
+            raise ValueError("Possible value of 'if_exists' are 'skip' and 'replace'")
         self.logger = logger
         self.set_files(fname_list)
         self.set_select_mode(cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel)
+        self.if_exists = if_exists
+        self.output_dir = output_dir
 
     def set_files(self, fname_list):
         """
@@ -101,7 +107,8 @@ class XLStoCSVMultiFile(object):
                                  collapse_header=collapse_header, header_xls_range=header_xls_range,
                                  header_xls_start=header_xls_start, header_xls_end=header_xls_end,
                                  sheet_name=self.cfg_xls_sheets_sel[fname], dtype='str')
-        df.to_csv(fname_out,index=False)
+        if not (self.if_exists == 'skip' and os.path.isfile(fname_out)):
+            df.to_csv(fname_out, index=False)
 
         return fname_out
 
