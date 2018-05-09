@@ -64,7 +64,8 @@ class CombinerCSV(object):
 
     """
 
-    def __init__(self, fname_list, sep=',', has_header = True, all_strings=False, nrows_preview=3, read_csv_params=None, logger=None):
+    def __init__(self, fname_list, sep=',', has_header = True, all_strings=False, nrows_preview=3, read_csv_params=None,
+                 logger=None):
         if not fname_list:
             raise ValueError("Filename list should not be empty")
         self.fname_list = fname_list
@@ -244,6 +245,55 @@ class CombinerCSV(object):
 
         return df_all
 
+    def get_output_filename(self, fname, suffix):
+        basename = os.path.basename(fname)
+        name_with_ext = os.path.splitext(basename)
+        new_name = name_with_ext[0] + suffix
+        if len(name_with_ext) == 2:
+            new_name += name_with_ext[1]
+        return new_name
+
+    def match_save(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10, is_filename_col=True,
+                   is_col_common=False):
+        """
+
+        Save matched columns data directly to CSV for each of the files.
+
+        Args:
+            output_dir (str): output directory to save, default input file directory, optional
+            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
+            overwrite (bool): overwrite file if exists, default True, optional
+            is_col_common (bool): Use common columns else all columns, default False, optional
+
+        """
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        self._preview_available()
+        columns = self.col_preview['columns_common'] if is_col_common else self.col_preview['columns_all']
+        if is_filename_col:
+            columns += ['filename', ]
+        df_all_header = pd.DataFrame(columns=columns)
+
+        for fname in self.fname_list:
+            if self.logger:
+                self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
+
+            new_name = self.get_output_filename(fname, suffix)
+            if output_dir:
+                fhandle = os.path.join(output_dir, new_name)
+            else:
+                fhandle = os.path.join(os.path.dirname(fname), new_name)
+            if overwrite or not os.path.isfile(fhandle):
+                # todo: warning to be raised - how?
+                df_all_header.to_csv(fhandle, header=True, index=False)
+                for df_chunk in self.read_csv(fname, chunksize=chunksize):
+                    df_chunk = df_chunk.reindex(columns)
+                    if is_filename_col:
+                        df_chunk['filename'] = ntpath.basename(new_name)
+                    df_chunk.to_csv(fhandle, header=False, index=False)
+
+        return True
 
 # ******************************************************************
 # advanced
@@ -370,7 +420,7 @@ class CombinerCSVAdvanced(object):
         """
 
         if not self.cfg_col_sel:
-            raise ValueError('Need to provide cfg_col_sel in constructor to use combine_save()')
+            raise ValueError('Need to provide cfg_col_sel in constructor to use match_save()')
 
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)

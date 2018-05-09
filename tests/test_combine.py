@@ -160,6 +160,20 @@ def create_files_csv_noheader():
 
     return [cfg_fname % 'jan',cfg_fname % 'feb',cfg_fname % 'mar']
 
+@pytest.fixture(scope="module")
+def create_files_csv_col_renamed():
+
+    df1, df2, df3 = create_files_df_clean()
+    cfg_col = ['date', 'sales', 'profit', 'cost']
+    cfg_col2 = ['date', 'sales', 'profit_renamed', 'cost']
+
+    cfg_fname = cfg_fname_base_in + 'input-csv-renamed-%s.csv'
+    df1[cfg_col].to_csv(cfg_fname % 'jan', index=False)
+    df2[cfg_col].to_csv(cfg_fname % 'feb', index=False)
+    df3[cfg_col2].to_csv(cfg_fname % 'mar', index=False)
+
+    return [cfg_fname % 'jan', cfg_fname % 'feb', cfg_fname % 'mar']
+
 def create_files_csv_dirty(cfg_sep=",", cfg_header=True):
 
     df1,df2,df3 = create_files_df_clean()

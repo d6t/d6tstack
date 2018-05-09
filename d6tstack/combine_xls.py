@@ -35,9 +35,6 @@ class XLStoCSVMultiFile(object):
                  logger=None, if_exists='skip', output_dir=None):
         if not fname_list:
             raise ValueError("Filename list should not be empty")
-        print("="*20)
-        print(if_exists)
-        print("="*20)
         if if_exists not in ['skip', 'replace']:
             raise ValueError("Possible value of 'if_exists' are 'skip' and 'replace'")
         self.logger = logger
@@ -97,16 +94,27 @@ class XLStoCSVMultiFile(object):
         self.cfg_xls_sheets_sel_mode = cfg_xls_sheets_sel_mode
         self.cfg_xls_sheets_sel = cfg_xls_sheets_sel
 
+    def _get_output_filename(self, fname):
+        if self.output_dir:
+            if not os.path.exists(self.output_dir):
+                os.makedirs(self.output_dir)
+            basename = os.path.basename(fname)
+            fname_out = os.path.join(self.output_dir, basename)
+        else:
+            fname_out = fname
+        return fname_out
+
     def _convert_single(self, fname, remove_blank_cols=False, remove_blank_rows=False, collapse_header=False,
                         header_xls_range=None, header_xls_start=None, header_xls_end=None):
         if self.logger:
             self.logger.send_log('converting file: '+ntpath.basename(fname)+' | sheet: '+ str(self.cfg_xls_sheets_sel[fname]),'ok')
 
-        fname_out = fname+'-'+str(self.cfg_xls_sheets_sel[fname])+'.csv'
+        fname_out = self._get_output_filename(fname) + '-' + str(self.cfg_xls_sheets_sel[fname]) + '.csv'
         df = read_excel_advanced(fname, remove_blank_cols=remove_blank_cols, remove_blank_rows=remove_blank_rows,
                                  collapse_header=collapse_header, header_xls_range=header_xls_range,
                                  header_xls_start=header_xls_start, header_xls_end=header_xls_end,
                                  sheet_name=self.cfg_xls_sheets_sel[fname], dtype='str')
+
         if not (self.if_exists == 'skip' and os.path.isfile(fname_out)):
             df.to_csv(fname_out, index=False)
 
@@ -147,16 +155,27 @@ class XLStoCSVMultiSheet(object):
 
     """
 
-    def __init__(self, fname, sheet_names=None, logger=None):
+    def __init__(self, fname, sheet_names=None, logger=None, output_dir=None):
         assert type(fname) is str
         self.logger = logger
         self.set_files(fname)
         assert sheet_names is None or isinstance(sheet_names, list)
         self.sheet_names = sheet_names
+        self.output_dir = output_dir
 
     def set_files(self, fname):
         self.fname = fname
         self.xlsSniffer = XLSSniffer([fname,])
+
+    def _get_output_filename(self):
+        if self.output_dir:
+            if not os.path.exists(self.output_dir):
+                os.makedirs(self.output_dir)
+            basename = os.path.basename(self.fname)
+            fname_out = os.path.join(self.output_dir, basename)
+        else:
+            fname_out = self.fname
+        return fname_out
 
     def _convert_single(self, fname):
 
@@ -173,7 +192,7 @@ class XLStoCSVMultiSheet(object):
                 if self.logger:
                     self.logger.send_log('sniffing sheets in '+ntpath.basename(self.fname),'ok')
 
-                fname_out = self.fname+'-'+str(iSheet)+'.csv'
+                fname_out = self._get_output_filename() + '-' + str(iSheet) + '.csv'
                 df = pd.read_excel(self.fname, remove_blank_cols=remove_blank_cols, remove_blank_rows=remove_blank_rows,
                                    collapse_header=collapse_header, header_xls_range=header_xls_range,
                                    header_xls_start=header_xls_start, header_xls_end=header_xls_end,
