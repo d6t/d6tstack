@@ -253,7 +253,7 @@ class CombinerCSV(object):
             new_name += name_with_ext[1]
         return new_name
 
-    def match_save(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10, is_filename_col=True,
+    def align_save(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10, is_filename_col=True,
                    is_col_common=False):
         """
 
@@ -407,10 +407,10 @@ class CombinerCSVAdvanced(object):
 
         return True
 
-    def match_save(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10, is_filename_col=True):
+    def align_save(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10, is_filename_col=True):
         """
 
-        Save combined data directly to CSV. This implements out-of-core combine functionality to combine large files. For in-memory use `combine()`
+        Save files aligning the columns for large files. For combined save use `combine_save()`
 
         Args:
             output_dir (str): output directory to save, default input file directory, optional
