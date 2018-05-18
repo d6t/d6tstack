@@ -1,5 +1,5 @@
 numpy
 openpyxl
 xlrd
-pandas
+pandas==0.22.0
 xlwt

@@ -552,6 +552,11 @@ def create_files_csv_rename():
     return [cfg_fname % '11',cfg_fname % '12',cfg_fname % '21',cfg_fname % '22']
 
 
+@pytest.fixture(scope="module")
+def create_out_files_csv_align_save():
+    cfg_outname = cfg_fname_base_out + 'input-csv-rename-%s-align-save.csv'
+    return [cfg_outname % '11', cfg_outname % '12',cfg_outname % '21',cfg_outname % '22']
+
 def test_apply_select_rename():
     df11, df12, df21, df22 = create_df_rename()
 
@@ -592,8 +597,8 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
             c2.combine_save(fname_out)
             dfc = pd.read_csv(fname_out)
             dfc = dfc.drop(['filename'], 1)
+            print(dfc, df_chk.reset_index(drop=True))
             assert dfc.equals(df_chk.reset_index(drop=True))
-
 
     # rename 1, select all
     l = create_files_csv_rename[:2]
@@ -623,3 +628,48 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
     l = [create_files_csv_rename[0],create_files_csv_rename[2]]
     helper(l,None,None,df_chk2)
 
+
+def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_files_csv_align_save):
+    df11, df12, df21, df22 = create_df_rename()
+
+    def helper(fnames, cfg_col_sel, cfg_col_rename, new_fnames, df_chks):
+        c = CombinerCSV(fnames)
+        if cfg_col_sel and cfg_col_rename:
+            c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
+        elif cfg_col_sel:
+            c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel)
+        elif cfg_col_rename:
+            c2 = CombinerCSVAdvanced(c, cfg_col_rename=cfg_col_rename)
+        else:
+            c2 = CombinerCSVAdvanced(c)
+            
+        c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save", is_filename_col=False)
+        for fname_out, df_chk in zip(new_fnames, df_chks):
+            dfc = pd.read_csv(fname_out)
+            print(dfc, df_chk)
+            assert dfc.equals(df_chk)
+        
+    # rename 1, select all
+    l = create_files_csv_rename[:2]
+    outl = create_out_files_csv_align_save[:2]
+    helper(l, ['a'], {'b':'a'}, outl, [df11, df11])
+
+    with pytest.raises(ValueError) as e:
+        c = CombinerCSV(l)
+        c2 = CombinerCSVAdvanced(c)
+        c2.align_save()
+
+    # rename 1, select some
+    l = [create_files_csv_rename[2]]
+    outl = [create_out_files_csv_align_save[2]]
+    helper(l, ['a'], {'b':'a'}, outl, [df11])
+
+    # rename none, select 1
+    l = [create_files_csv_rename[2]]
+    outl = [create_out_files_csv_align_save[2]]
+    helper(l, ['a'], None, outl, [df11])
+
+    # rename none, select all
+    l = [create_files_csv_rename[2]]
+    outl = [create_out_files_csv_align_save[2]]
+    helper(l, ['a', 'c'], None, outl, [df21])

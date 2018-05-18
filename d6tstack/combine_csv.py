@@ -385,13 +385,16 @@ class CombinerCSVAdvanced(object):
 
         fhandle = open(fname_out, 'w')
 
-        # write header
-        cfg_col_sel2 = list(set([self.cfg_col_rename[k] if k in self.cfg_col_rename.keys() else k for k in self.cfg_col_sel])) # set of columns after rename
+        # set of columns after rename
+        cfg_col_sel2 = list(collections.OrderedDict.fromkeys([self.cfg_col_rename[k]
+                                                              if k in self.cfg_col_rename.keys() else k
+                                                              for k in self.cfg_col_sel]))
 
         columns = cfg_col_sel2
         if is_filename_col:
             columns += ['filename', ]
         df_all_header = pd.DataFrame(columns=columns)
+        # write header
         df_all_header.to_csv(fhandle, header=True, index=False)
         # todo: what if file hasn't header
 
@@ -420,12 +423,15 @@ class CombinerCSVAdvanced(object):
         """
 
         if not self.cfg_col_sel:
-            raise ValueError('Need to provide cfg_col_sel in constructor to use match_save()')
+            raise ValueError('Need to provide cfg_col_sel in constructor to use align_save()')
 
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        cfg_col_sel2 = list(set([self.cfg_col_rename[k] if k in self.cfg_col_rename.keys() else k for k in self.cfg_col_sel])) # set of columns after rename
+        # set of columns after rename
+        cfg_col_sel2 = list(collections.OrderedDict.fromkeys([self.cfg_col_rename[k]
+                                                              if k in self.cfg_col_rename.keys() else k
+                                                              for k in self.cfg_col_sel]))
 
         columns = cfg_col_sel2
         if is_filename_col:
@@ -435,23 +441,22 @@ class CombinerCSVAdvanced(object):
         for fname in self.combiner.fname_list:
             if self.combiner.logger:
                 self.combiner.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
-            basename = os.path.basename(fname)
-            name_with_ext = os.path.splitext(basename)
-            new_name = name_with_ext[0] + suffix
-            if len(name_with_ext) == 2:
-                new_name += name_with_ext[1]
+            basename = ntpath.basename(fname)
+            filename, ext = os.path.splitext(basename)
+            new_name = filename + suffix + ext
             if output_dir:
-                fhandle = os.path.join(output_dir, new_name)
+                fname_out = os.path.join(output_dir, new_name)
             else:
-                fhandle = os.path.join(os.path.dirname(fname), new_name)
-            if overwrite or not os.path.isfile(fhandle):
+                fname_out = os.path.join(os.path.dirname(fname), new_name)
+            if overwrite or not os.path.isfile(fname_out):
                 # todo: warning to be raised - how?
+                fhandle = open(fname_out, 'w')
                 df_all_header.to_csv(fhandle, header=True, index=False)
                 for df_chunk in self.combiner.read_csv(fname, chunksize=chunksize):
                     if self.cfg_col_sel or self.cfg_col_rename:
                         df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, self.cfg_col_rename)
                     if is_filename_col:
-                        df_chunk['filename'] = ntpath.basename(new_name)
+                        df_chunk['filename'] = new_name
                     df_chunk.to_csv(fhandle, header=False, index=False)
 
         return True
