@@ -22,7 +22,7 @@ Notes:
 
 from d6tstack.combine_files import *
 from d6tstack.combine_csv import *
-from d6tstack.combine_xls import *
+from d6tstack.convert_xls import *
 
 import pandas as pd
 import ntpath
@@ -198,18 +198,20 @@ def create_files_xls_single():
 def create_files_xlsx_single():
     return create_files_xls_single_helper(cfg_fname_base_in+'input-xls-sing-%s.xlsx')
 
+
+def write_file_xls(dfg, fname, startrow=0,startcol=0):
+    writer = pd.ExcelWriter(fname)
+    dfg.to_excel(writer, 'Sheet1', index=False,startrow=startrow,startcol=startcol)
+    dfg.to_excel(writer, 'Sheet2', index=False,startrow=startrow,startcol=startcol)
+    writer.save()
+
 # excel multi-tab
 def create_files_xls_multiple_helper(cfg_fname):
-    def write_file(dfg,fname):
-        writer = pd.ExcelWriter(fname)
-        dfg.to_excel(writer,'Sheet1',index=False)
-        dfg.to_excel(writer,'Sheet2',index=False)
-        writer.save()
 
     df1,df2,df3 = create_files_df_clean()
-    write_file(df1,cfg_fname % 'jan')
-    write_file(df2,cfg_fname % 'feb')
-    write_file(df3,cfg_fname % 'mar')
+    write_file_xls(df1,cfg_fname % 'jan')
+    write_file_xls(df2,cfg_fname % 'feb')
+    write_file_xls(df3,cfg_fname % 'mar')
 
     return [cfg_fname % 'jan',cfg_fname % 'feb',cfg_fname % 'mar']
     
@@ -378,148 +380,6 @@ def test_CombinerCSVAdvanced_combine(create_files_csv):
     assert 'profit2' in df.columns.values
     assert df['profit2'].isnull().all()
 
-#************************************************************
-# combine_xls
-#************************************************************
-
-def test_xls_scan_sheets_single(create_files_xls_single,create_files_xlsx_single):
-    def helper(fnames):
-        xlsSniffer = XLSSniffer(fnames)
-        sheets = xlsSniffer.dict_xls_sheets
-        assert np.all([file['sheets_names']==['Sheet1'] for file in sheets.values()])
-        assert np.all([file['sheets_count']==1 for file in sheets.values()])
-        assert xlsSniffer.all_same_count()
-        assert xlsSniffer.all_same_names()
-        assert xlsSniffer.all_contain_sheetname('Sheet1')
-        assert xlsSniffer.all_have_idx(0)
-        assert not xlsSniffer.all_have_idx(1)
-    
-    helper(create_files_xls_single)
-    helper(create_files_xlsx_single)
-
-def test_xls_scan_sheets_multipe(create_files_xls_multiple,create_files_xlsx_multiple):
-    def helper(fnames):
-        xlsSniffer = XLSSniffer(fnames)
-        sheets = xlsSniffer.dict_xls_sheets
-        assert np.all([file['sheets_names']==['Sheet1', 'Sheet2'] for file in sheets.values()])
-        assert np.all([file['sheets_count']==2 for file in sheets.values()])
-
-    helper(create_files_xls_multiple)
-    helper(create_files_xlsx_multiple)
-
-#todo: wrong file raises exception NotImplementedError
-
-
-#************************************************************
-# tests - ui
-#************************************************************
-def test_combine_csv(create_files_csv):
-    r = combine_files(create_files_csv, '', logger, cfg_return_df=True)
-    assert r['status']=='complete'
-    df = r['data']
-    df2 = r['data'].copy().reset_index(drop=True)
-    df = df.sort_values('date').drop(['filename'], axis=1)
-    df_chk = create_files_df_clean_combine()
-    assert df.equals(df_chk)
-
-    r = combine_files(create_files_csv, cfg_fname_base_out_dir, logger, cfg_return_df=False)
-    assert r['status'] == 'complete'
-    df = pd.read_csv(cfg_fname_base_out_dir + '/combined.csv', dtype=str)
-    assert sorted(df.columns) == sorted(df2.columns)
-    assert df.equals(df2[df.columns])
-    df_sample = pd.read_csv(cfg_fname_base_out_dir + '/combined-sample.csv', dtype=str)
-    assert sorted(df_sample.columns) == sorted(df2.columns)
-    assert df_sample.equals(df2.groupby('filename').head(5).set_index('filename').reset_index()[df_sample.columns])
-
-
-def test_combine_csv_colmismatch(create_files_csv_colmismatch):
-    r = combine_files(create_files_csv_colmismatch, '', logger, cfg_return_df=True)
-    assert r['status']=='need_columns'
-    
-    r['settings']['columns_select_mode'] = 'all'
-    r = combine_files(create_files_csv_colmismatch, '', logger, cfg_settings = r['settings'], cfg_return_df=True)
-    assert r['status']=='complete'
-    assert r['settings']['columns_select_mode'] == 'all'
-    df = r['data']
-    df = df.sort_values('date').drop(['filename'],axis=1)
-    df_chk = create_files_df_colmismatch_combine(cfg_col_common=False)
-    assert df.shape[1] == df_chk.shape[1]
-
-    # use common columns
-    r['settings']['columns_select_mode'] = 'common'
-    r = combine_files(create_files_csv_colmismatch, '', logger, cfg_settings = r['settings'], cfg_return_df=True)
-    assert r['status'] == 'complete'
-    df = r['data']
-    df = df.sort_values('date').drop(['filename'], axis=1)
-    df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
-    assert df.shape[1] == df_chk.shape[1]
-
-def test_combine_csv_colmismatch2(create_files_csv_colmismatch2):
-    r = combine_files(create_files_csv_colmismatch2, '', logger, cfg_return_df=True)
-    assert r['status']=='need_columns'
-    assert set([d['fname'] for d in r['columns_files']])==set([ntpath.basename(f) for f in create_files_csv_colmismatch2])
-    df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
-    assert set([d['fname'] for d in r['columns_files']])==set([ntpath.basename(f) for f in create_files_csv_colmismatch2])
-    assert [d['col_common_count'] for d in r['columns_files']]==[df_chk.shape[1]]*len(create_files_csv_colmismatch2)
-    assert r['columns_files_all']['col_common_count'] == df_chk.shape[1]
-    #todo: write more tests for r['columns_files']:['fname', 'col_common_names', 'col_common_count', 'col_unique_names', 'col_unique_count']
-
-    # use all columns
-    r['settings']['columns_select_mode'] = 'all'
-    r = combine_files(create_files_csv_colmismatch2, '', logger, cfg_settings=r['settings'], cfg_return_df=True)
-    assert r['status']=='complete'
-    df = r['data']
-    df = df.sort_values('date').drop(['filename'],axis=1)
-    df_chk = create_files_df_colmismatch_combine2(cfg_col_common=False)
-    assert df.shape[1] == df_chk.shape[1]
-
-    # use common columns
-    r['settings']['columns_select_mode'] = 'common'
-    r = combine_files(create_files_csv_colmismatch2, '', logger, cfg_settings = r['settings'], cfg_return_df=True)
-    assert r['status'] == 'complete'
-    df = r['data']
-    df = df.sort_values('date').drop(['filename'], axis=1)
-    df_chk = create_files_df_colmismatch_combine2(cfg_col_common=True)
-    assert df.shape[1] == df_chk.shape[1]
-
-
-def helper_test_combine_xls_process(r):
-    df = r['data']
-    df = df.sort_values('date').drop(['filename'],axis=1)
-    df['date'] = df['date'].str[0:10]
-    df_chk = create_files_df_clean_combine()
-    return df,df_chk
-
-def test_combine_xls_single(create_files_xls_single):
-    r = combine_files(create_files_xls_single, '', logger,cfg_return_df=True)
-    df,df_chk = helper_test_combine_xls_process(r)
-
-    assert df.equals(df_chk)
-
-def test_combine_xls_multipe(create_files_xls_multiple):
-    # run without input
-    settings = {}
-    r = combine_files(create_files_xls_multiple, '', logger, cfg_settings = settings, cfg_return_df=True)
-    assert not r['status']=='complete'
-    assert r['status']=='need_xls_sheets'
-
-    # select sheets by name
-    settings['xls_sheets_sel'] = dict(zip(create_files_xls_multiple,['Sheet1']*len(create_files_xls_multiple)))
-    settings['xls_sheets_sel_mode'] = 'name'
-
-    r = combine_files(create_files_xls_multiple, '', logger, cfg_settings = settings, cfg_return_df=True)
-    df,df_chk = helper_test_combine_xls_process(r)
-
-    assert df.equals(df_chk)
-
-    # select sheets by index
-    settings['xls_sheets_sel'] = dict(zip(create_files_xls_multiple,[0]*len(create_files_xls_multiple)))
-    settings['xls_sheets_sel_mode'] = 'idx'
-
-    r = combine_files(create_files_xls_multiple, '', logger, cfg_settings = settings, cfg_return_df=True)
-    df,df_chk = helper_test_combine_xls_process(r)
-
-    assert df.equals(df_chk)
 
 def test_preview_dict():
     df = pd.DataFrame({'col1':[0,1],'col2':[0,1]})
@@ -673,3 +533,5 @@ def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_file
     l = [create_files_csv_rename[2]]
     outl = [create_out_files_csv_align_save[2]]
     helper(l, ['a', 'c'], None, outl, [df21])
+
+
