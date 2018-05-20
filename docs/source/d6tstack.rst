@@ -20,10 +20,10 @@ d6tstack\.combine\_files module
     :undoc-members:
     :show-inheritance:
 
-d6tstack\.combine\_xls module
+d6tstack\.convert\_xls module
 -----------------------------
 
-.. automodule:: d6tstack.combine_xls
+.. automodule:: d6tstack.convert_xls
     :members:
     :undoc-members:
     :show-inheritance:
@@ -44,18 +44,18 @@ d6tstack\.helpers\_ui module
     :undoc-members:
     :show-inheritance:
 
-d6tstack\.read\_excel\_adv module
----------------------------------
-
-.. automodule:: d6tstack.read_excel_adv
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 d6tstack\.sniffer module
 ------------------------
 
 .. automodule:: d6tstack.sniffer
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+d6tstack\.utils module
+----------------------
+
+.. automodule:: d6tstack.utils
     :members:
     :undoc-members:
     :show-inheritance:
