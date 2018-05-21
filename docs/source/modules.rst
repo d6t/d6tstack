@@ -5,5 +5,3 @@ d6tstack
    :maxdepth: 4
 
    d6tstack
-   setup
-   tests

@@ -20,9 +20,7 @@ Notes:
 
 """
 
-from d6tstack.combine_files import *
 from d6tstack.combine_csv import *
-from d6tstack.convert_xls import *
 
 import pandas as pd
 import ntpath

@@ -12,34 +12,10 @@ d6tstack\.combine\_csv module
     :undoc-members:
     :show-inheritance:
 
-d6tstack\.combine\_files module
--------------------------------
-
-.. automodule:: d6tstack.combine_files
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 d6tstack\.convert\_xls module
 -----------------------------
 
 .. automodule:: d6tstack.convert_xls
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-d6tstack\.helpers module
-------------------------
-
-.. automodule:: d6tstack.helpers
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-d6tstack\.helpers\_ui module
-----------------------------
-
-.. automodule:: d6tstack.helpers_ui
     :members:
     :undoc-members:
     :show-inheritance:

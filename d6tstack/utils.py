@@ -75,3 +75,12 @@ def read_excel_advanced(fname, remove_blank_cols=True, remove_blank_rows=True, c
         df = df.head(nrows_preview)
 
     return df
+
+
+class PrintLogger(object):
+    def send_log(self, msg, status):
+        print(msg,status)
+
+    def send(self, data):
+        print(data)
+
