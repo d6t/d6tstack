@@ -30,6 +30,9 @@ def test_xls_scan_sheets_single(create_files_xls_single, create_files_xlsx_singl
         assert xlsSniffer.all_have_idx(0)
         assert not xlsSniffer.all_have_idx(1)
 
+    with pytest.raises(ValueError) as e:
+        x = XLSSniffer([])
+
     helper(create_files_xls_single)
     helper(create_files_xlsx_single)
 
@@ -179,6 +182,9 @@ def test_XLStoCSVMultiFile(create_files_xls_single,create_files_xlsx_single):
     fnames_out = x.convert_all(header_xls_range="B2:C2")
     dfr = pd.read_csv(fnames_out[0])
     assert dfr.equals(dfc)
+
+    with pytest.raises(ValueError) as e:
+        x = XLStoCSVMultiFile([], 'name', {})
 
 
 #************************************************************

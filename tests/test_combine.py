@@ -295,6 +295,9 @@ def test_csv_sniff_multi(create_files_csv, create_files_csv_noheader):
 
 def test_CombinerCSV_columns(create_files_csv, create_files_csv_colmismatch, create_files_csv_colreorder):
 
+    with pytest.raises(ValueError) as e:
+        c = CombinerCSV([])
+
     fname_list = create_files_csv
     combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
     col_preview = combiner.preview_columns()
