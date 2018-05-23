@@ -21,6 +21,7 @@ Notes:
 """
 
 from d6tstack.combine_csv import *
+from d6tstack.sniffer import CSVSniffer
 
 import pandas as pd
 import ntpath
@@ -504,7 +505,6 @@ def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_file
         c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save", is_filename_col=False)
         for fname_out, df_chk in zip(new_fnames, df_chks):
             dfc = pd.read_csv(fname_out)
-            print(dfc, df_chk)
             assert dfc.equals(df_chk)
         
     # rename 1, select all
