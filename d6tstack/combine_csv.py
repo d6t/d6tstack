@@ -392,7 +392,7 @@ class CombinerCSVAdvanced(object):
 
         columns = cfg_col_sel2
         if is_filename_col:
-            columns += ['filename', ]
+            columns += ['filename', 'filename2']
         df_all_header = pd.DataFrame(columns=columns)
         # write header
         df_all_header.to_csv(fhandle, header=True, index=False)
@@ -406,6 +406,7 @@ class CombinerCSVAdvanced(object):
                     df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, self.cfg_col_rename)
                 if is_filename_col:
                     df_chunk['filename'] = ntpath.basename(fname)
+                    df_chunk['filename2'] = ntpath.basename(fname)
                 df_chunk.to_csv(fhandle, header=False, index=False)
 
         return True
