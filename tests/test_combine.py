@@ -66,6 +66,17 @@ def create_files_df_clean_combine():
     return df_all
 
 
+def create_files_df_clean_combine_with_filename(fname_list):
+    df1, df2, df3 = create_files_df_clean()
+    df1['filename'] = os.path.basename(fname_list[0])
+    df2['filename'] = os.path.basename(fname_list[1])
+    df3['filename'] = os.path.basename(fname_list[2])
+    df_all = pd.concat([df1, df2, df3])
+    df_all = df_all[df_all.columns].astype(str)
+
+    return df_all
+
+
 def create_files_df_colmismatch_combine(cfg_col_common):
     df1, df2, df3 = create_files_df_clean()
     df3['profit2']=df3['profit']*2
@@ -356,6 +367,21 @@ def test_CombinerCSV_combine(create_files_csv, create_files_csv_colmismatch, cre
     df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
     assert df.shape[1] == df_chk.shape[1]
 
+    # Filename column True
+    fname_list = create_files_csv
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    df = combiner.combine(is_filename_col=True)
+
+    df = df.sort_values('date')
+    df_chk = create_files_df_clean_combine_with_filename(fname_list)
+    assert df.equals(df_chk)
+
+    # Filename column False
+    df = combiner.combine(is_filename_col=False)
+    df = df.sort_values('date')
+    df_chk = create_files_df_clean_combine()
+    assert df.equals(df_chk)
+
 
 def test_CombinerCSVAdvanced_combine(create_files_csv):
 
@@ -442,7 +468,7 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
     df_chk1 = pd.concat([df11,df11])
     df_chk2 = pd.concat([df11,df21])
 
-    def helper(fnames,cfg_col_sel,cfg_col_rename, df_chk):
+    def helper(fnames, cfg_col_sel,cfg_col_rename, df_chk, chk_filename=False, is_filename_col=True):
         c = CombinerCSV(fnames)
         if cfg_col_sel and cfg_col_rename:
             c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
@@ -451,15 +477,17 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
         else:
             c2 = CombinerCSVAdvanced(c)
 
-        dfc = c2.combine().drop(['filename'], 1)
+        dfc = c2.combine(is_filename_col=is_filename_col)
+        if (not chk_filename) and is_filename_col:
+            dfc = dfc.drop(['filename'], 1)
         assert dfc.equals(df_chk)
 
         if cfg_col_sel:
             fname_out = cfg_fname_base_out_dir + '/test_save.csv'
-            c2.combine_save(fname_out)
+            c2.combine_save(fname_out, is_filename_col=is_filename_col)
             dfc = pd.read_csv(fname_out)
-            dfc = dfc.drop(['filename'], 1)
-            print(dfc, df_chk.reset_index(drop=True))
+            if (not chk_filename) or (not is_filename_col):
+                dfc = dfc.drop(['filename'], 1)
             assert dfc.equals(df_chk.reset_index(drop=True))
 
     # rename 1, select all
@@ -490,11 +518,20 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
     l = [create_files_csv_rename[0],create_files_csv_rename[2]]
     helper(l,None,None,df_chk2)
 
+    # filename col True
+    df31 = df11
+    df32 = df21
+    df31['filename'] = os.path.basename(l[0])
+    df32['filename'] = os.path.basename(l[1])
+    df_chk3 = pd.concat([df31, df32])
+    helper(l, None, None, df_chk3, is_filename_col=True, chk_filename=True)
+    helper(l, None, None, df_chk2, is_filename_col=False, chk_filename=True)
+
 
 def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_files_csv_align_save):
     df11, df12, df21, df22 = create_df_rename()
 
-    def helper(fnames, cfg_col_sel, cfg_col_rename, new_fnames, df_chks):
+    def helper(fnames, cfg_col_sel, cfg_col_rename, new_fnames, df_chks, is_filename_col=False):
         c = CombinerCSV(fnames)
         if cfg_col_sel and cfg_col_rename:
             c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
@@ -505,7 +542,7 @@ def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_file
         else:
             c2 = CombinerCSVAdvanced(c)
             
-        c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save", is_filename_col=False)
+        c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save", is_filename_col=is_filename_col)
         for fname_out, df_chk in zip(new_fnames, df_chks):
             dfc = pd.read_csv(fname_out)
             assert dfc.equals(df_chk)
@@ -534,5 +571,9 @@ def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_file
     l = [create_files_csv_rename[2]]
     outl = [create_out_files_csv_align_save[2]]
     helper(l, ['a', 'c'], None, outl, [df21])
+
+    # rename none, select all, filename col true
+    df21['filename'] = os.path.basename(outl[0])
+    helper(l, ['a', 'c'], None, outl, [df21], is_filename_col=True)
 
 
