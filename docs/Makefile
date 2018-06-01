@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = python -msphinx
-SPHINXPROJ    = d6t-celery-combine
+SPHINXPROJ    = d6tstack
 SOURCEDIR     = source
 BUILDDIR      = build
 

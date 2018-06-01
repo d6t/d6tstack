@@ -6,6 +6,16 @@ Vendors often send large datasets in multiple files. Often there are missing and
 
 ![](https://www.databolt.tech/images/combiner-landing-git.png)
 
+### Features include
+
+* Quickly check columns for consistency across files
+* Fix added/missing columns
+* Fix renamed columns
+* Check Excel tabs for consistency across files
+* Excel to CSV converter (incl multi-sheet support)
+* Out of core functionality to process large files
+* Export to CSV, pandas, SQL
+
 ### Sample Use
 
 ```python
@@ -18,39 +28,23 @@ from d6tstack.stack import combine_csv
 >>> c.is_all_equal()
 False
 
-# show which files are missing columns
+# show which files have missing columns
 >>> c.is_col_present()
    filename  cost  date profit profit2 sales
 0  feb.csv  True  True   True   False  True
-1  jan.csv  True  True   True   False  True
 2  mar.csv  True  True   True    True  True
 
 >>> c.combine_preview() # keep all columns
    filename  cost        date profit profit2 sales
 0   jan.csv  -80  2011-01-01     20     NaN   100
-0   feb.csv  -90  2011-02-01    110     NaN   200
 0   mar.csv  -100  2011-03-01    200     400   300
 
 >>> c.combine_preview(is_col_common=True) # keep common columns
    filename  cost        date profit sales
 0   jan.csv  -80  2011-01-01     20   100
-0   feb.csv  -90  2011-02-01    110   200
 0   mar.csv  -100  2011-03-01    200   300
 
 ```
-
-
-### Features include
-
-* Scan headers of all files to check column names => useful QA tool before using dask or pyspark
-* Select and rename columns in multiple files
-* CSV Settings sniffer
-* Excel tab sniffer
-* Excel to CSV converter (incl multi-sheet support)
-* Out of core functionality
-* Export to CSV or pandas dataframe
-
-[Combiner Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb)
 
 
 ## Installation
