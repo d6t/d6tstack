@@ -5,6 +5,7 @@ setup(
     version='0.1.0',
     packages=['d6tstack'],
     url='https://github.com/d6t/d6tstack',
+    download_url = 'https://github.com/d6t/d6tstack/archive/0.1.0.tar.gz',
     license='MIT',
     author='DataBolt Team',
     author_email='support@databolt.tech',
@@ -20,5 +21,7 @@ setup(
         'xlwt'
     ],
     include_package_data=True,
-    python_requires='>=3.6'
+    python_requires='>=3.6',
+    keywords=['d6tstack', 'fast-data-evaluation'],
+    classifiers=[]
 )
