@@ -3,3 +3,4 @@ openpyxl
 xlrd
 pandas==0.22.0
 xlwt
+sqlalchemy

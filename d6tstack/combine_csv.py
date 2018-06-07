@@ -3,6 +3,7 @@ import ntpath
 
 import numpy as np
 import pandas as pd
+from sqlalchemy.engine import create_engine
 
 from .sniffer import CSVSnifferList
 from .helpers import *
@@ -41,6 +42,16 @@ def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
         dfg = dfg.reindex(columns=cfg_col_sel2)
 
     return dfg
+
+
+def convert_to_sql(df, cnxn_string, table_name, if_exists='replace', chunksize=5000):
+    engine = create_engine(cnxn_string)
+    connection = engine.connect()
+    connection.dialect.supports_multivalues_insert = True
+
+    df.to_sql(table_name, connection, schema=None, if_exists=if_exists, index=True, index_label=None,
+              chunksize=5000, dtype=None)
+    return True
 
 
 # ******************************************************************
@@ -316,7 +327,40 @@ class CombinerCSV(object):
                                chunksize=chunksize, is_filename_col=is_filename_col,
                                cfg_col_sel2=cfg_col_sel2)
 
+    def to_sql(self, cnxn_string, table_name, is_col_common=False, is_preview=False, is_filename_col=True,
+               if_exists='replace', chunksize=5000):
+        df = self.combine(is_col_common=is_col_common, is_preview=is_preview, is_filename_col=is_filename_col)
+        return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
 
+    def to_sql_stream(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10, is_filename_col=True,
+                      is_col_common=False):
+        cfg_col_sel2 = self.get_columns_for_save()
+        columns = cfg_col_sel2
+        if is_filename_col:
+            columns += ['filename', ]
+
+        df_all_header = pd.DataFrame(columns=columns)
+            df_all_header.to_csv(fhandle, header=True, index=False)
+        for fname in self.fname_list:
+            if self.logger:
+                self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
+
+            new_name = self.get_output_filename(fname, suffix)
+            if output_dir:
+                fname_out = os.path.join(output_dir, new_name)
+            else:
+                fname_out = os.path.join(os.path.dirname(fname), new_name)
+            if overwrite or not os.path.isfile(fname_out):
+                # todo: warning to be raised - how?
+                if not out_filename:
+                    fhandle = open(fname_out, 'w')
+                    df_all_header.to_csv(fhandle, header=True, index=False)
+                for df_chunk in self.read_csv(fname, chunksize=chunksize):
+                    if cfg_col_sel2 or cfg_col_rename:
+                        df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, cfg_col_rename)
+                    if is_filename_col:
+                        df_chunk['filename'] = ntpath.basename(new_name)
+                    df_chunk.to_csv(fhandle, header=False, index=False)
 
 # ******************************************************************
 # advanced
@@ -443,3 +487,7 @@ class CombinerCSVAdvanced(object):
                                  cfg_col_rename=self.cfg_col_rename)
 
         return True
+
+    def to_sql(self, cnxn_string, table_name, is_filename_col=True, if_exists='replace', chunksize=5000):
+        df = self.combine(is_filename_col=is_filename_col)
+        return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
