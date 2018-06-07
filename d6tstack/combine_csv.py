@@ -301,7 +301,7 @@ class CombinerCSV(object):
                         df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, cfg_col_rename)
                     if is_filename_col:
                         df_chunk['filename'] = ntpath.basename(new_name)
-                    df_chunk.to_csv(fhandle, header=False, index=False)
+                    df_chunk.to_csv(fhandle, header=aFalse, index=False)
 
         return True
 
@@ -318,7 +318,8 @@ class CombinerCSV(object):
             is_col_common (bool): Use common columns else all columns, default False, optional
 
         """
-        cfg_col_sel2 = self.get_columns_for_save()
+        cfg_col_sel2 = self.get_columns_for_save(is_filename_col=is_filename_col,
+                                                 is_col_common=is_col_common)
         columns = cfg_col_sel2
         if is_filename_col:
             columns += ['filename', ]
@@ -332,35 +333,25 @@ class CombinerCSV(object):
         df = self.combine(is_col_common=is_col_common, is_preview=is_preview, is_filename_col=is_filename_col)
         return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
 
-    def to_sql_stream(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10, is_filename_col=True,
-                      is_col_common=False):
-        cfg_col_sel2 = self.get_columns_for_save()
-        columns = cfg_col_sel2
-        if is_filename_col:
-            columns += ['filename', ]
+    def to_sql_stream(self, cnxn_string, table_name, suffix='-matched', if_exists='replace',
+                      chunksize=1e10, sql_chunksize=5000, cfg_col_sel=None,
+                      is_filename_col=True, is_col_common=False, cfg_col_rename=None):
+        if not cfg_col_sel:
+            cfg_col_sel = self.get_columns_for_save(is_filename_col=is_filename_col,
+                                                    is_col_common=is_col_common)
 
-        df_all_header = pd.DataFrame(columns=columns)
-            df_all_header.to_csv(fhandle, header=True, index=False)
         for fname in self.fname_list:
             if self.logger:
                 self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
-
             new_name = self.get_output_filename(fname, suffix)
-            if output_dir:
-                fname_out = os.path.join(output_dir, new_name)
-            else:
-                fname_out = os.path.join(os.path.dirname(fname), new_name)
-            if overwrite or not os.path.isfile(fname_out):
-                # todo: warning to be raised - how?
-                if not out_filename:
-                    fhandle = open(fname_out, 'w')
-                    df_all_header.to_csv(fhandle, header=True, index=False)
-                for df_chunk in self.read_csv(fname, chunksize=chunksize):
-                    if cfg_col_sel2 or cfg_col_rename:
-                        df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, cfg_col_rename)
-                    if is_filename_col:
-                        df_chunk['filename'] = ntpath.basename(new_name)
-                    df_chunk.to_csv(fhandle, header=False, index=False)
+            for df_chunk in self.read_csv(fname, chunksize=chunksize):
+                if cfg_col_sel or cfg_col_rename:
+                    df_chunk = apply_select_rename(df_chunk, cfg_col_sel, cfg_col_rename)
+                if is_filename_col:
+                    df_chunk['filename'] = ntpath.basename(new_name)
+                convert_to_sql(df_chunk, cnxn_string, table_name, if_exists=if_exists,
+                               chunksize=sql_chunksize)
+        return True
 
 # ******************************************************************
 # advanced
@@ -491,3 +482,12 @@ class CombinerCSVAdvanced(object):
     def to_sql(self, cnxn_string, table_name, is_filename_col=True, if_exists='replace', chunksize=5000):
         df = self.combine(is_filename_col=is_filename_col)
         return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
+
+    def to_sql_stream(self, cnxn_string, table_name, suffix='-matched', if_exists='replace',
+                      chunksize=1e10, sql_chunksize=5000,
+                      is_filename_col=True):
+        cfg_col_sel = self.get_columns_for_save()
+        return self.combiner.to_sql_stream(cnxn_string, table_name, suffix=suffix, if_exists=if_exists,
+                                           chunksize=chunksize, sql_chunksize=sql_chunksize,
+                                           is_filename_col=is_filename_col, cfg_col_sel=cfg_col_sel,
+                                           cfg_col_rename=self.cfg_col_rename)
