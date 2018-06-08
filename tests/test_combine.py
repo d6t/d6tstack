@@ -632,32 +632,29 @@ def test_CombinerCSVAdvanced_sql(create_files_csv_rename):
 
 def test_CombinerCSV_sql(create_files_csv):
 
+    def helper(fnames, is_col_common=False, is_filename_col=False, stream=False):
+        combiner = CombinerCSV(fname_list=fnames, all_strings=True)
+        table_name = 'test'
+        db_cnxn_string = cnxn_string.format('test-combined-adv')
+        if stream:
+            combiner.to_sql_stream(db_cnxn_string, table_name, is_filename_col=is_filename_col, is_col_common=is_col_common)
+        else:
+            combiner.to_sql(db_cnxn_string, table_name, is_filename_col=is_filename_col, is_col_common=is_col_common)
+        df = pd.read_sql("select * from test", db_cnxn_string)
+        df = df.set_index('index')
+        df.index.name = None
+        return df
+
     # all columns present, to_sql
     fname_list = create_files_csv
-    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
-    table_name = 'test'
-    db_cnxn_string = cnxn_string.format('test-combined-adv')
-    combiner.to_sql(db_cnxn_string, table_name, is_filename_col=False)
-    df = pd.read_sql("select * from test", db_cnxn_string)
-    df = df.set_index('index')
-    df.index.name = None
     df_chk = create_files_df_clean_combine()
-    assert df.equals(df_chk)
+    assert df_chk.equals(helper(fname_list))
 
     # to sql stream
-    combiner.to_sql_stream(db_cnxn_string, table_name, is_filename_col=False)
-    df = pd.read_sql("select * from test", db_cnxn_string)
-    df = df.set_index('index')
-    df.index.name = None
-    assert df.equals(df_chk)
+    assert df_chk.equals(helper(fname_list, stream=True))
 
     # columns mismatch, common columns, to_sql
     fname_list = create_files_csv_colmismatch()
-    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
-    combiner.to_sql(db_cnxn_string, table_name, is_filename_col=False, is_col_common=True)
-    df = pd.read_sql("select * from test", db_cnxn_string)
-    df = df.set_index('index')
-    df.index.name = None
     df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
-    assert df.shape[1] == df_chk.shape[1]
+    assert helper(fname_list, is_col_common=True).shape[1] == df_chk.shape[1]
 
