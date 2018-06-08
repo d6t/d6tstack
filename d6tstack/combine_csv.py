@@ -50,7 +50,7 @@ def convert_to_sql(df, cnxn_string, table_name, if_exists='replace', chunksize=5
     connection.dialect.supports_multivalues_insert = True
 
     df.to_sql(table_name, connection, schema=None, if_exists=if_exists, index=True, index_label=None,
-              chunksize=5000, dtype=None)
+              chunksize=chunksize, dtype=None)
     return True
 
 
@@ -301,7 +301,7 @@ class CombinerCSV(object):
                         df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, cfg_col_rename)
                     if is_filename_col:
                         df_chunk['filename'] = ntpath.basename(new_name)
-                    df_chunk.to_csv(fhandle, header=aFalse, index=False)
+                    df_chunk.to_csv(fhandle, header=False, index=False)
 
         return True
 
@@ -330,25 +330,58 @@ class CombinerCSV(object):
 
     def to_sql(self, cnxn_string, table_name, is_col_common=False, is_preview=False, is_filename_col=True,
                if_exists='replace', chunksize=5000):
+        """
+
+            Save combined files to sql.
+
+            Args:
+                cnxn_string (str): connection string to connect to database
+                table_name (str): table name to be used to store the data to database
+                is_col_common (bool): Use common columns else all columns, default False, optional
+                is_preview (bool): read only self.nrows_preview top rows
+                is_filename_col (bool): add filename column to output data frame. If `False`, will not add column.
+                if_exists (str): replace or append to existing table, optional
+                chunksize (int): Number of rows to be inserted to table at one time.
+        """
         df = self.combine(is_col_common=is_col_common, is_preview=is_preview, is_filename_col=is_filename_col)
         return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
 
-    def to_sql_stream(self, cnxn_string, table_name, suffix='-matched', if_exists='replace',
+    def to_sql_stream(self, cnxn_string, table_name, if_exists='replace',
                       chunksize=1e10, sql_chunksize=5000, cfg_col_sel=None,
                       is_filename_col=True, is_col_common=False, cfg_col_rename=None):
+        """
+
+            Save combined large files in chunks to sql.
+
+            Args:
+                cnxn_string (str): connection string to connect to database
+                table_name (str): table name to be used to store the data to database
+                is_col_common (bool): Use common columns else all columns, default False, optional
+                is_preview (bool): read only self.nrows_preview top rows
+                is_filename_col (bool): add filename column to output data frame. If `False`, will not add column.
+                if_exists (str): replace or append to existing table, optional
+                chunksize (int): Number of lines to be used to extract from file each time.
+                sql_chunksize (int): Number of rows to be inserted to table at one time.
+                cfg_col_rename (dict): dict mapping for new column names
+        """
+
         if not cfg_col_sel:
             cfg_col_sel = self.get_columns_for_save(is_filename_col=is_filename_col,
                                                     is_col_common=is_col_common)
-
+        first_time = True
         for fname in self.fname_list:
             if self.logger:
                 self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
-            new_name = self.get_output_filename(fname, suffix)
             for df_chunk in self.read_csv(fname, chunksize=chunksize):
                 if cfg_col_sel or cfg_col_rename:
                     df_chunk = apply_select_rename(df_chunk, cfg_col_sel, cfg_col_rename)
                 if is_filename_col:
-                    df_chunk['filename'] = ntpath.basename(new_name)
+                    df_chunk['filename'] = ntpath.basename(fname)
+                if first_time:
+                    if_exists = if_exists
+                    first_time = False
+                else:
+                    if_exists = 'append'
                 convert_to_sql(df_chunk, cnxn_string, table_name, if_exists=if_exists,
                                chunksize=sql_chunksize)
         return True
@@ -480,14 +513,42 @@ class CombinerCSVAdvanced(object):
         return True
 
     def to_sql(self, cnxn_string, table_name, is_filename_col=True, if_exists='replace', chunksize=5000):
+        """
+
+            Save combined files to sql.
+
+            Args:
+                cnxn_string (str): connection string to connect to database
+                table_name (str): table name to be used to store the data to database
+                is_col_common (bool): Use common columns else all columns, default False, optional
+                is_preview (bool): read only self.nrows_preview top rows
+                is_filename_col (bool): add filename column to output data frame. If `False`, will not add column.
+                if_exists (str): replace or append to existing table, optional
+                chunksize (int): Number of rows to be inserted to table at one time.
+        """
         df = self.combine(is_filename_col=is_filename_col)
         return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
 
-    def to_sql_stream(self, cnxn_string, table_name, suffix='-matched', if_exists='replace',
-                      chunksize=1e10, sql_chunksize=5000,
-                      is_filename_col=True):
+    def to_sql_stream(self, cnxn_string, table_name, if_exists='replace',
+                      chunksize=1e10, sql_chunksize=5000, is_filename_col=True):
+        """
+
+            Save combined large files in chunks to sql.
+
+            Args:
+                cnxn_string (str): connection string to connect to database
+                table_name (str): table name to be used to store the data to database
+                is_col_common (bool): Use common columns else all columns, default False, optional
+                is_preview (bool): read only self.nrows_preview top rows
+                is_filename_col (bool): add filename column to output data frame. If `False`, will not add column.
+                if_exists (str): replace or append to existing table, optional
+                chunksize (int): Number of lines to be used to extract from file each time.
+                sql_chunksize (int): Number of rows to be inserted to table at one time.
+                cfg_col_rename (dict): dict mapping for new column names
+        """
+
         cfg_col_sel = self.get_columns_for_save()
-        return self.combiner.to_sql_stream(cnxn_string, table_name, suffix=suffix, if_exists=if_exists,
+        return self.combiner.to_sql_stream(cnxn_string, table_name, if_exists=if_exists,
                                            chunksize=chunksize, sql_chunksize=sql_chunksize,
                                            is_filename_col=is_filename_col, cfg_col_sel=cfg_col_sel,
                                            cfg_col_rename=self.cfg_col_rename)

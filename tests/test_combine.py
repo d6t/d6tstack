@@ -31,6 +31,7 @@ import pytest
 cfg_fname_base_in = 'test-data/input/test-data-'
 cfg_fname_base_out_dir = 'test-data/output'
 cfg_fname_base_out = cfg_fname_base_out_dir+'/test-data-'
+cnxn_string = 'sqlite:///test-data/db/{}.db'
 
 #************************************************************
 # fixtures
@@ -576,4 +577,87 @@ def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_file
     df21['filename'] = os.path.basename(outl[0])
     helper(l, ['a', 'c'], None, outl, [df21], is_filename_col=True)
 
+
+def test_CombinerCSVAdvanced_sql(create_files_csv_rename):
+    df11, df12, df21, df22 = create_df_rename()
+
+    def helper(fnames, cfg_col_sel, cfg_col_rename, df_chks, is_filename_col=False, stream=False):
+        c = CombinerCSV(fnames)
+        if cfg_col_sel and cfg_col_rename:
+            c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
+        elif cfg_col_sel:
+            c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel)
+        elif cfg_col_rename:
+            c2 = CombinerCSVAdvanced(c, cfg_col_rename=cfg_col_rename)
+        else:
+            c2 = CombinerCSVAdvanced(c)
+        df_chk = pd.DataFrame()
+        for df in df_chks:
+            df_chk = df_chk.append(df)
+        table_name = 'test'
+        db_cnxn_string = cnxn_string.format('test-combined-adv')
+        if stream:
+            c2.to_sql_stream(db_cnxn_string, table_name, is_filename_col=is_filename_col)
+        else:
+            c2.to_sql(db_cnxn_string, table_name, is_filename_col=is_filename_col)
+        dfc = pd.read_sql("select * from test", db_cnxn_string)
+        dfc = dfc.set_index('index')
+        dfc.index.name = None
+        pd.testing.assert_frame_equal(dfc, df_chk)
+        assert dfc.equals(df_chk)
+
+    # rename 1, select all
+    l = create_files_csv_rename[:2]
+    helper(l, ['a'], {'b': 'a'}, [df11, df11], stream=True)
+
+    # test sql stream
+    helper(l, ['a'], {'b': 'a'}, [df11, df11])
+
+    # rename 1, select some
+    l = [create_files_csv_rename[2]]
+    helper(l, ['a'], {'b': 'a'}, [df11])
+
+    # rename none, select 1
+    l = [create_files_csv_rename[2]]
+    helper(l, ['a'], None, [df11])
+
+    # rename none, select all
+    l = [create_files_csv_rename[2]]
+    helper(l, ['a', 'c'], None, [df21])
+
+    # rename none, select all, filename col true
+    df21['filename'] = os.path.basename(l[0])
+    helper(l, ['a', 'c'], None, [df21], is_filename_col=True)
+
+
+def test_CombinerCSV_sql(create_files_csv):
+
+    # all columns present, to_sql
+    fname_list = create_files_csv
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    table_name = 'test'
+    db_cnxn_string = cnxn_string.format('test-combined-adv')
+    combiner.to_sql(db_cnxn_string, table_name, is_filename_col=False)
+    df = pd.read_sql("select * from test", db_cnxn_string)
+    df = df.set_index('index')
+    df.index.name = None
+    df_chk = create_files_df_clean_combine()
+    assert df.equals(df_chk)
+
+    # to sql stream
+    combiner.to_sql_stream(db_cnxn_string, table_name, is_filename_col=False)
+    df = pd.read_sql("select * from test", db_cnxn_string)
+    df = df.set_index('index')
+    df.index.name = None
+    assert df.equals(df_chk)
+
+    # columns mismatch, common columns, to_sql
+    fname_list = create_files_csv_colmismatch()
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    combiner.to_sql(db_cnxn_string, table_name, is_filename_col=False, is_col_common=True)
+    df = pd.read_sql("select * from test", db_cnxn_string)
+    df = df.set_index('index')
+    df.index.name = None
+    df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
+    assert df.shape[1] == df_chk.shape[1]
 
