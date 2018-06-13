@@ -49,9 +49,9 @@ False
 
 ## Installation
 
-Install `pip install git+https://github.com/d6t/d6tstack.git`
+Latest prod version `pip install d6tstack`
 
-Update `pip install --upgrade git+https://github.com/d6t/d6tstack.git`
+Latest dev version `pip install git+https://github.com/d6t/d6tstack.git`
 
 
 ## Documentation
