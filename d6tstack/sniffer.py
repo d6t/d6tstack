@@ -40,7 +40,7 @@ class CSVSniffer(object):
     Args:
         fname (string): file path
         nlines (int): number of lines to sample from each file
-        delims (string): possible delimiters, default ',;\t|'
+        delims (string): possible delimiters, default ",;\t|"
 
     """
 

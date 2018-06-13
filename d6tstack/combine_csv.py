@@ -48,8 +48,7 @@ def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
 # ******************************************************************
 
 class CombinerCSV(object):
-    """
-    
+    """    
     Core combiner class. Checks columns, generates preview, combines.
 
     Args:
@@ -302,13 +301,12 @@ class CombinerCSV(object):
 
 class CombinerCSVAdvanced(object):
     """
-
     Combiner class with advanced features. Allows renaming, selecting of columns and out-of-core combining
 
     Args:
         combiner (object): instance of CombinerCSV
         cfg_col_sel (list): list of column names to keep
-        cfg_col_rename (dict): dict of columns to rename `{'name_old':'name_new'}
+        cfg_col_rename (dict): dict of columns to rename `{'name_old':'name_new'}`
 
     """
 
