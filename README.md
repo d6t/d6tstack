@@ -56,7 +56,7 @@ Update `pip install --upgrade git+https://github.com/d6t/d6tstack.git`
 
 ## Documentation
 
-*  [Combiner Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb) - Demonstrates combiner usage
+*  [Stacking examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb) - Demonstrates combiner usage
 *  [Dask Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-dask.ipynb) - How to use d6tstack to solve Dask input file problems
 *  [Pyspark Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-pyspark.ipynb) - How to use d6tstack to solve pyspark input file problems
 *  [Official docs](http://d6tstack.readthedocs.io/en/latest/py-modindex.html) - Detailed documentation for modules, classes, functions
