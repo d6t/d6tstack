@@ -20,22 +20,6 @@ d6tstack\.convert\_xls module
     :undoc-members:
     :show-inheritance:
 
-d6tstack\.helpers module
-------------------------
-
-.. automodule:: d6tstack.helpers
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-d6tstack\.helpers\_ui module
-----------------------------
-
-.. automodule:: d6tstack.helpers_ui
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 d6tstack\.sniffer module
 ------------------------
 
