@@ -356,7 +356,7 @@ def test_CombinerCSV_combine(create_files_csv, create_files_csv_colmismatch, cre
 
     # columns mismatch, all columns
     fname_list = create_files_csv_colmismatch
-    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True, cfg_filename_col=True)
     df = combiner.combine()
     df = df.sort_values('date').drop(['filename'],axis=1)
     df_chk = create_files_df_colmismatch_combine(cfg_col_common=False)
@@ -371,14 +371,15 @@ def test_CombinerCSV_combine(create_files_csv, create_files_csv_colmismatch, cre
     # Filename column True
     fname_list = create_files_csv
     combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
-    df = combiner.combine(is_filename_col=True)
+    df = combiner.combine()
 
     df = df.sort_values('date')
     df_chk = create_files_df_clean_combine_with_filename(fname_list)
     assert df.equals(df_chk)
 
     # Filename column False
-    df = combiner.combine(is_filename_col=False)
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True, cfg_filename_col=False)
+    df = combiner.combine()
     df = df.sort_values('date')
     df_chk = create_files_df_clean_combine()
     assert df.equals(df_chk)
@@ -470,7 +471,7 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
     df_chk2 = pd.concat([df11,df21])
 
     def helper(fnames, cfg_col_sel,cfg_col_rename, df_chk, chk_filename=False, is_filename_col=True):
-        c = CombinerCSV(fnames)
+        c = CombinerCSV(fnames, cfg_filename_col=is_filename_col)
         if cfg_col_sel and cfg_col_rename:
             c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
         elif cfg_col_rename:
@@ -478,14 +479,14 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
         else:
             c2 = CombinerCSVAdvanced(c)
 
-        dfc = c2.combine(is_filename_col=is_filename_col)
+        dfc = c2.combine()
         if (not chk_filename) and is_filename_col:
             dfc = dfc.drop(['filename'], 1)
         assert dfc.equals(df_chk)
 
         if cfg_col_sel:
             fname_out = cfg_fname_base_out_dir + '/test_save.csv'
-            c2.combine_save(fname_out, is_filename_col=is_filename_col)
+            c2.combine_save(fname_out)
             dfc = pd.read_csv(fname_out)
             if (not chk_filename) or (not is_filename_col):
                 dfc = dfc.drop(['filename'], 1)
@@ -533,7 +534,7 @@ def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_file
     df11, df12, df21, df22 = create_df_rename()
 
     def helper(fnames, cfg_col_sel, cfg_col_rename, new_fnames, df_chks, is_filename_col=False):
-        c = CombinerCSV(fnames)
+        c = CombinerCSV(fnames, cfg_filename_col=is_filename_col)
         if cfg_col_sel and cfg_col_rename:
             c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
         elif cfg_col_sel:
@@ -543,7 +544,7 @@ def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_file
         else:
             c2 = CombinerCSVAdvanced(c)
             
-        c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save", is_filename_col=is_filename_col)
+        c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save")
         for fname_out, df_chk in zip(new_fnames, df_chks):
             dfc = pd.read_csv(fname_out)
             assert dfc.equals(df_chk)
@@ -582,7 +583,7 @@ def test_CombinerCSVAdvanced_sql(create_files_csv_rename):
     df11, df12, df21, df22 = create_df_rename()
 
     def helper(fnames, cfg_col_sel, cfg_col_rename, df_chks, is_filename_col=False, stream=False):
-        c = CombinerCSV(fnames)
+        c = CombinerCSV(fnames, cfg_filename_col=is_filename_col)
         if cfg_col_sel and cfg_col_rename:
             c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
         elif cfg_col_sel:
@@ -597,9 +598,9 @@ def test_CombinerCSVAdvanced_sql(create_files_csv_rename):
         table_name = 'test'
         db_cnxn_string = cnxn_string.format('test-combined-adv')
         if stream:
-            c2.to_sql_stream(db_cnxn_string, table_name, is_filename_col=is_filename_col)
+            c2.to_sql_stream(db_cnxn_string, table_name)
         else:
-            c2.to_sql(db_cnxn_string, table_name, is_filename_col=is_filename_col)
+            c2.to_sql(db_cnxn_string, table_name)
         dfc = pd.read_sql("select * from test", db_cnxn_string)
         dfc = dfc.set_index('index')
         dfc.index.name = None
@@ -633,13 +634,13 @@ def test_CombinerCSVAdvanced_sql(create_files_csv_rename):
 def test_CombinerCSV_sql(create_files_csv):
 
     def helper(fnames, is_col_common=False, is_filename_col=False, stream=False):
-        combiner = CombinerCSV(fname_list=fnames, all_strings=True)
+        combiner = CombinerCSV(fname_list=fnames, all_strings=True, cfg_filename_col=is_filename_col)
         table_name = 'test'
         db_cnxn_string = cnxn_string.format('test-combined-adv')
         if stream:
-            combiner.to_sql_stream(db_cnxn_string, table_name, is_filename_col=is_filename_col, is_col_common=is_col_common)
+            combiner.to_sql_stream(db_cnxn_string, table_name, is_col_common=is_col_common)
         else:
-            combiner.to_sql(db_cnxn_string, table_name, is_filename_col=is_filename_col, is_col_common=is_col_common)
+            combiner.to_sql(db_cnxn_string, table_name, is_col_common=is_col_common)
         df = pd.read_sql("select * from test", db_cnxn_string)
         df = df.set_index('index')
         df.index.name = None
