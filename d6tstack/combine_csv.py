@@ -318,8 +318,6 @@ class CombinerCSV(object):
         """
         cfg_col_sel2 = self.get_columns_for_save(is_col_common=is_col_common)
         columns = cfg_col_sel2
-        if self.cfg_filename_col:
-            columns += ['filename', ]
 
         return self.save_files(columns, output_dir=output_dir, suffix=suffix, overwrite=overwrite,
                                chunksize=chunksize, cfg_col_sel2=cfg_col_sel2)
