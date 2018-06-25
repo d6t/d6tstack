@@ -1,20 +1,5 @@
-"""
-add to d6stack.sync
-refactor to make have local and s3 sync use same code
-turn into an object so don't have to connect to ftp 2x? reconnect if timed out
-upload_ftp_files_s3: needs params, uses global cfg_ftp_host which aren't passed into the function
-upload_ftp_files_s3: allow user to specify /tmp/. by default use './data/', create if doesn't exist
-upload_ftp_files_s3: needs to retain directory structure
-get_ftp_files needs params
-get_ftp_files fileSetftp should be sortable list, default by alphabetic directory structure
-get_ftp_files subdirs=True param - parse all subdirs if True else only specified dir
-get_ftp_files: get total size of files to be synced
-use logger object
-doc strings
-"""
-
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
+import boto3
+import botocore
 import os
 import ftputil
 import numpy as np
@@ -46,11 +31,28 @@ class FTPSync:
         self.cfg_ftp_dir = cfg_ftp_dir
         self.ftp_host = ftputil.FTPHost(cfg_ftp_host, cfg_ftp_usr, cfg_ftp_pwd)
         self.ftp_host.use_list_a_option = False
-        self.s3_conn = None
-        self.bucket = None
+        self.s3_client = None
+        self.bucket_name = None
         if cfg_s3_key and cfg_s3_secret and bucket_name:
-            self.s3_conn = S3Connection(cfg_s3_key, cfg_s3_secret, host='s3.ap-south-1.amazonaws.com')
-            self.bucket = self.s3_conn.get_bucket(bucket_name)
+            self.s3_client = boto3.client(
+                's3',
+                aws_access_key_id=cfg_s3_key,
+                aws_secret_access_key=cfg_s3_secret
+            )
+            exists = True
+            try:
+                self.s3_client.head_bucket(Bucket=bucket_name)
+            except botocore.exceptions.ClientError as e:
+                # If a client error is thrown, then check that it was a 404 error.
+                # If it was a 404 error, then the bucket does not exist.
+                error_code = int(e.response['Error']['Code'])
+                if error_code == 404:
+                    exists = False
+            if not exists:
+                if logger:
+                    logger.send_log('Bucket does not exist. Creating bucket', 'ok')
+                self.s3_client.create_bucket(Bucket=bucket_name)
+            self.bucket_name = bucket_name
         self.local_dir = local_dir
         if not os.path.exists(local_dir):
             os.makedirs(local_dir)
@@ -93,13 +95,16 @@ class FTPSync:
 
             Get all file list from s3 in the given bucket
 
-            Returns:
+           Returns:
                 File list from s3 in bucket
 
         """
+        if not self.s3_client or not self.bucket_name:
+            raise ValueError("S3 credentials are mandatory to use this functionality")
         s3_files = set()
-        for key in self.bucket.list():
-            s3_files.add(key.name.encode('utf-8'))
+        all_files = self.s3_client.list_objects(Bucket=self.bucket_name)
+        for content in all_files.get('Contents', []):
+            s3_files.add(content.get('Key'))
         return s3_files
 
     def upload_to_s3(self, fname, local_path):
@@ -114,8 +119,7 @@ class FTPSync:
         """
 
         with open(local_path, 'rb') as f:
-            key = Key(self.bucket, fname)
-            key.set_contents_from_file(f)
+            self.s3_client.upload_fileobj(f, self.bucket_name, fname)
 
     def get_files_for_sync(self, subdirs=True, to_s3=False):
         """
@@ -132,8 +136,7 @@ class FTPSync:
             server_files = self.get_s3_files()
         else:
             server_files = self.get_all_files(subdirs=subdirs)
-        print(server_files)
-        files_ftp_sync = set(ftp_files).difference(server_files)
+        files_ftp_sync = set(ftp_files).difference(set(server_files))
         total_file_size = sum([self.ftp_host.path.getsize(os.path.join(self.cfg_ftp_dir, f))
                                for f in files_ftp_sync])
         return files_ftp_sync, total_file_size

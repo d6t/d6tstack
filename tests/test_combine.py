@@ -500,6 +500,10 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
         c = CombinerCSV(l)
         c2 = CombinerCSVAdvanced(c, cfg_col_sel=['a','a'])
 
+    # rename 2 col to same in same file
+    # l = [create_files_csv_rename[2]]
+    # helper(l, None, {'a': 'c'}, df_chk1)
+
     # rename 1, select some
     l = [create_files_csv_rename[0],create_files_csv_rename[-1]]
     helper(l,['a'],{'b':'a'},df_chk1)
