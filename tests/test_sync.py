@@ -12,21 +12,17 @@ local_dir = '/tmp/new_data/'
 ftp_file_path = 'aquapad/AquaPad.jpg'
 
 
-def _remove_local_files(folder):
-    for the_file in os.listdir(folder):
-        file_path = os.path.join(folder, the_file)
-        try:
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path): shutil.rmtree(file_path)
-        except Exception as e:
-            print(e)
+def _remove_local_dir(folder):
+    shutil.rmtree(folder)
 
 
 def test_sync_local():
-    _remove_local_files(local_dir)
+    _remove_local_dir(local_dir)
     ftpsync = FTPSync(cfg_ftp_host, cfg_ftp_usr, cfg_ftp_pwd, cfg_ftp_dir_base,
                       local_dir=local_dir, logger=None)
+
+    # check local dir is created
+    assert os.path.exists(local_dir)
 
     # Local files should be empty
     assert ftpsync.get_all_files().tolist() == []
@@ -37,9 +33,17 @@ def test_sync_local():
     # Get files for sync local
     assert ftpsync.get_files_for_sync() == ({ftp_file_path}, 278683)
 
+    # Upload ftp files to local (subdirs false)
+    ftpsync.upload_ftp_files(subdirs=False)
+    assert ftpsync.get_all_files().tolist() == []
+
+    # Upload ftp files to local (subdirs true)
+    ftpsync.upload_ftp_files()
+    assert ftpsync.get_all_files().tolist() == [ftp_file_path]
+
 
 @mock_s3
-def test_sync_s3():
+def _test_sync_s3():
     ftpsync = FTPSync(cfg_ftp_host, cfg_ftp_usr, cfg_ftp_pwd, cfg_ftp_dir_base,
                       local_dir=local_dir, logger=None)
 
