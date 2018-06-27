@@ -18,7 +18,7 @@ Vendors often send large datasets in multiple files. Often there are missing and
 
 ### Sample Use
 
-```python
+```
 
 import glob
 from d6tstack.stack import combine_csv
@@ -59,5 +59,5 @@ Update `pip install --upgrade git+https://github.com/d6t/d6tstack.git`
 *  [Combiner Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb) - Demonstrates combiner usage
 *  [Dask Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-dask.ipynb) - How to use d6tstack to solve Dask input file problems
 *  [Pyspark Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-pyspark.ipynb) - How to use d6tstack to solve pyspark input file problems
-*  [Official docs](http://d6tstack.readthedocs.io/en/latest/index.html) - Detailed documentation for modules, classes, functions
+*  [Official docs](http://d6tstack.readthedocs.io/en/latest/py-modindex.html) - Detailed documentation for modules, classes, functions
 *  [www.databolt.tech](https://www.databolt.tech/index-combine.html) - Web app if you don't want to code
