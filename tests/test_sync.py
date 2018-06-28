@@ -13,9 +13,11 @@ ftp_file_path = 'aquapad/AquaPad.jpg'
 
 
 def _remove_local_dir(folder):
-    shutil.rmtree(folder)
+    if os.path.exists(folder):
+        shutil.rmtree(folder)
 
 
+@pytest.mark.slow
 def test_sync_local():
     _remove_local_dir(local_dir)
     ftpsync = FTPSync(cfg_ftp_host, cfg_ftp_usr, cfg_ftp_pwd, cfg_ftp_dir_base,
@@ -42,8 +44,9 @@ def test_sync_local():
     assert ftpsync.get_all_files().tolist() == [ftp_file_path]
 
 
+@pytest.mark.slow
 @mock_s3
-def _test_sync_s3():
+def test_sync_s3():
     ftpsync = FTPSync(cfg_ftp_host, cfg_ftp_usr, cfg_ftp_pwd, cfg_ftp_dir_base,
                       local_dir=local_dir, logger=None)
 

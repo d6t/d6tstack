@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import warnings
 from sqlalchemy.engine import create_engine
 
 from .sniffer import CSVSnifferList
@@ -24,12 +25,12 @@ def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
 
     if cfg_col_rename:
         # check no naming conflicts
-        cfg_col_sel2 = list(set([cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in dfg.columns.tolist()])) # set of columns after rename
+        cfg_col_sel2 = [cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in dfg.columns.tolist()]
         df_rename_count = collections.Counter(cfg_col_sel2)
-        if df_rename_count:
-            if max(df_rename_count.values()) > 1: # would the rename create naming conflict?
-                raise ValueError('Renaming conflict',[(k,v) for k,v in df_rename_count.items() if v>1])
-        dfg = dfg.rename(columns=cfg_col_rename)
+        if df_rename_count and max(df_rename_count.values()) > 1:  # would the rename create naming conflict?
+            warnings.warn('Renaming conflict: {}'.format([(k,v) for k,v in df_rename_count.items() if v>1]), UserWarning)
+        else:
+            dfg = dfg.rename(columns=cfg_col_rename)
     if cfg_col_sel:
         if cfg_col_rename:
             cfg_col_sel2 = list(set([cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in cfg_col_sel])) # set of columns after rename

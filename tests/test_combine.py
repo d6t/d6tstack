@@ -447,6 +447,7 @@ def create_out_files_csv_align_save():
     cfg_outname = cfg_fname_base_out + 'input-csv-rename-%s-align-save.csv'
     return [cfg_outname % '11', cfg_outname % '12',cfg_outname % '21',cfg_outname % '22']
 
+
 def test_apply_select_rename():
     df11, df12, df21, df22 = create_df_rename()
 
@@ -461,8 +462,8 @@ def test_apply_select_rename():
     assert df21[list(set(df21.columns))].equals(apply_select_rename(df22.copy(),['b','c'],{'b':'a'}))
     assert df21[list(set(df21.columns))].equals(apply_select_rename(df22.copy(),['a','c'],{'b':'a'}))
 
-    with pytest.raises(ValueError) as e:
-        assert df21.equals(apply_select_rename(df22.copy(), ['b', 'c'], {'b': 'c'}))
+    with pytest.warns(UserWarning, match="Renaming conflict"):
+        assert df12.equals(apply_select_rename(df22.copy(), ['b', 'c'], {'c': 'b'}))
 
 
 def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
@@ -500,10 +501,6 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
         c = CombinerCSV(l)
         c2 = CombinerCSVAdvanced(c, cfg_col_sel=['a','a'])
 
-    # rename 2 col to same in same file
-    # l = [create_files_csv_rename[2]]
-    # helper(l, None, {'a': 'c'}, df_chk1)
-
     # rename 1, select some
     l = [create_files_csv_rename[0],create_files_csv_rename[-1]]
     helper(l,['a'],{'b':'a'},df_chk1)
@@ -515,9 +512,9 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
     helper(l,['b'],{'b':'a'},df_chk1)
     helper(l,None,{'b':'a'},df_chk2)
 
-    with pytest.raises(ValueError) as e:
+    with pytest.warns(UserWarning, match="Renaming conflict"):
         c = CombinerCSV(l)
-        c2 = CombinerCSVAdvanced(c, cfg_col_rename={'b':'a','c':'a'})
+        c2 = CombinerCSVAdvanced(c, cfg_col_rename={'b': 'a', 'c': 'a'})
         c2.combine()
 
     # rename none, select all
