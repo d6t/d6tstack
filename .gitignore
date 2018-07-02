@@ -3,6 +3,7 @@
 temp/
 fiddle*
 .pytest_cache/
+test-data/output/
 
 # add this manually
 test-data/
