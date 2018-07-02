@@ -49,9 +49,9 @@ False
 
 ## Installation
 
-Latest prod version `pip install d6tstack`
+We recommend using the latest version from github `pip install git+https://github.com/d6t/d6tstack.git`
 
-Latest dev version `pip install git+https://github.com/d6t/d6tstack.git`
+If you cannot install from github, use the latest published version `pip install d6tstack`
 
 
 ## Documentation
