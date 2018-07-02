@@ -51,6 +51,25 @@ def convert_to_sql(df, cnxn_string, table_name, if_exists='replace', chunksize=5
     return True
 
 
+def convert_to_csv_parquet(combiner, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
+                           overwrite=True, streaming=True, chunksize=1e10, parquet_output=False):
+    if separate_files:
+        combiner.align_save(output_dir=output_dir, suffix=suffix, overwrite=overwrite,
+                            chunksize=chunksize, parquet_output=parquet_output)
+    elif streaming and out_filename:
+        combiner.combine_save(out_filename, chunksize=chunksize, parquet_output=parquet_output)
+    elif out_filename:
+        df = combiner.combine()
+        if parquet_output:
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+            table = pa.Table.from_pandas(df)
+            pq.write_table(table, out_filename)
+        else:
+            fhandle = open(out_filename, 'w')
+            df.to_csv(fhandle, header=True, index=False)
+
+
 # ******************************************************************
 # combiner
 # ******************************************************************
@@ -274,13 +293,26 @@ class CombinerCSV(object):
             columns += ['filename', ]
         return columns
 
-    def save_files(self, columns, out_filename=None, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10,
-                   cfg_col_sel2=None, cfg_col_rename=None):
+    def get_parquet_writer(self, df, filename):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        table = pa.Table.from_pandas(df)
+        pqwriter = pq.ParquetWriter(filename, table.schema)
+        pqwriter.write_table(table)
+        return pqwriter
 
+
+    def save_files(self, columns, out_filename=None, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10,
+                   cfg_col_sel2=None, cfg_col_rename=None, parquet_output=False):
+        if parquet_output:
+            import pyarrow as pa
         df_all_header = pd.DataFrame(columns=columns)
         if out_filename:
-            fhandle = open(out_filename, 'w')
-            df_all_header.to_csv(fhandle, header=True, index=False)
+            if parquet_output:
+                pqwriter = self.get_parquet_writer(df_all_header, out_filename)
+            else:
+                fhandle = open(out_filename, 'w')
+                df_all_header.to_csv(fhandle, header=True, index=False)
         for fname in self.fname_list:
             if self.logger:
                 self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
@@ -293,19 +325,26 @@ class CombinerCSV(object):
             if overwrite or not os.path.isfile(fname_out):
                 # todo: warning to be raised - how?
                 if not out_filename:
-                    fhandle = open(fname_out, 'w')
-                    df_all_header.to_csv(fhandle, header=True, index=False)
+                    if parquet_output:
+                        pqwriter = self.get_parquet_writer(df_all_header, out_filename)
+                    else:
+                        fhandle = open(fname_out, 'w')
+                        df_all_header.to_csv(fhandle, header=True, index=False)
                 for df_chunk in self.read_csv(fname, chunksize=chunksize):
                     if cfg_col_sel2 or cfg_col_rename:
                         df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, cfg_col_rename)
                     if self.cfg_filename_col:
                         df_chunk['filename'] = ntpath.basename(new_name)
-                    df_chunk.to_csv(fhandle, header=False, index=False)
+                    if parquet_output:
+                        table = pa.Table.from_pandas(df_chunk)
+                        pqwriter.write_table(table)
+                    else:
+                        df_chunk.to_csv(fhandle, header=False, index=False)
 
         return True
 
     def align_save(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10,
-                   is_col_common=False):
+                   is_col_common=False, parquet_output=False):
         """
 
         Save matched columns data directly to CSV for each of the files.
@@ -321,7 +360,7 @@ class CombinerCSV(object):
         columns = cfg_col_sel2
 
         return self.save_files(columns, output_dir=output_dir, suffix=suffix, overwrite=overwrite,
-                               chunksize=chunksize, cfg_col_sel2=cfg_col_sel2)
+                               chunksize=chunksize, cfg_col_sel2=cfg_col_sel2, parquet_output=parquet_output)
 
     def to_sql(self, cnxn_string, table_name, is_col_common=False, is_preview=False,
                if_exists='replace', chunksize=5000):
@@ -376,6 +415,26 @@ class CombinerCSV(object):
                 convert_to_sql(df_chunk, cnxn_string, table_name, if_exists=if_exists,
                                chunksize=sql_chunksize)
         return True
+
+    def to_csv(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
+               overwrite=True, chunksize=1e10):
+        """
+
+        Convert the files to combined csv or separate csv after aligning the columns
+
+        Args:
+            out_filename (str): when combining this is mandatory
+            separate_files (bool): To decide whether combine files or save separately, default True
+            output_dir (str): output directory to save for separate files, default input file directory, optional
+            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
+            overwrite (bool): overwrite file if exists, default True, optional
+            chunksize (int): chunksize to be used for writing large files in chunks
+
+        """
+
+        convert_to_csv_parquet(self, out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
+                               suffix=suffix, overwrite=overwrite, streaming=False, chunksize=chunksize)
+
 
 # ******************************************************************
 # advanced
@@ -539,3 +598,42 @@ class CombinerCSVAdvanced(object):
         return self.combiner.to_sql_stream(cnxn_string, table_name, if_exists=if_exists,
                                            chunksize=chunksize, sql_chunksize=sql_chunksize,
                                            cfg_col_sel=cfg_col_sel, cfg_col_rename=self.cfg_col_rename)
+
+    def to_csv(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
+               overwrite=True, streaming=True, chunksize=1e10):
+        """
+
+        Convert the files to combined csv or separate csv after aligning the columns
+
+        Args:
+            out_filename (str): when combining this is mandatory
+            separate_files (bool): convert to csv after aligning columns (without combining)
+            output_dir (str): output directory to save for separate files, default input file directory, optional
+            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
+            overwrite (bool): overwrite file if exists, default True, optional
+            streaming (bool): create combined csv, default True, optional
+            chunksize (int): chunksize to be used for writing large files in chunks
+
+        """
+        convert_to_csv_parquet(self, out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
+                               suffix=suffix, overwrite=overwrite, streaming=streaming, chunksize=chunksize)
+
+    def to_parquet(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
+                   overwrite=True, streaming=True, chunksize=1e10):
+        """
+
+        Convert the files to combined csv or separate csv after aligning the columns
+
+        Args:
+            out_filename (str): when combining this is mandatory
+            separate_files (bool): convert to csv after aligning columns (without combining)
+            output_dir (str): output directory to save for separate files, default input file directory, optional
+            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
+            overwrite (bool): overwrite file if exists, default True, optional
+            streaming (bool): create combined csv, default True, optional
+            chunksize (int): chunksize to be used for writing large files in chunks
+
+        """
+        convert_to_csv_parquet(self, out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
+                               suffix=suffix, overwrite=overwrite, streaming=streaming, chunksize=chunksize,
+                               parquet_output=True)
