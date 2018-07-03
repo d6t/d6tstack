@@ -304,7 +304,6 @@ class CombinerCSV(object):
         import pyarrow.parquet as pq
         table = pa.Table.from_pandas(df)
         pqwriter = pq.ParquetWriter(filename, table.schema)
-        pqwriter.write_table(table)
         return pqwriter
 
     def save_files(self, columns, out_filename=None, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10,
