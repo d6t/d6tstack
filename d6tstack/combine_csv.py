@@ -299,24 +299,17 @@ class CombinerCSV(object):
             columns += ['filename', ]
         return columns
 
-    def get_parquet_writer(self, df, filename):
-        import pyarrow as pa
-        import pyarrow.parquet as pq
-        table = pa.Table.from_pandas(df)
-        pqwriter = pq.ParquetWriter(filename, table.schema)
-        return pqwriter
-
     def save_files(self, columns, out_filename=None, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10,
                    cfg_col_sel2=None, cfg_col_rename=None, parquet_output=False):
         if parquet_output:
             import pyarrow as pa
+            import pyarrow.parquet as pq
         df_all_header = pd.DataFrame(columns=columns)
         if out_filename:
-            if parquet_output:
-                pqwriter = self.get_parquet_writer(df_all_header, out_filename)
-            else:
+            if not parquet_output:
                 fhandle = open(out_filename, 'w')
                 df_all_header.to_csv(fhandle, header=True, index=False)
+        first = True
         for fname in self.fname_list:
             if self.logger:
                 self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
@@ -330,11 +323,10 @@ class CombinerCSV(object):
                 warnings.warn("File already exists. Please pass overwrite=True for overwriting")
             else:
                 if not out_filename:
-                    if parquet_output:
-                        pqwriter = self.get_parquet_writer(df_all_header, fname_out)
-                    else:
+                    if not parquet_output:
                         fhandle = open(fname_out, 'w')
                         df_all_header.to_csv(fhandle, header=True, index=False)
+                    first = True
                 for df_chunk in self.read_csv(fname, chunksize=chunksize):
                     if cfg_col_sel2 or cfg_col_rename:
                         df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, cfg_col_rename)
@@ -342,6 +334,12 @@ class CombinerCSV(object):
                         df_chunk['filename'] = ntpath.basename(new_name)
                     if parquet_output:
                         table = pa.Table.from_pandas(df_chunk)
+                        if first:
+                            if out_filename:
+                                pqwriter = pq.ParquetWriter(out_filename, table.schema)
+                            else:
+                                pqwriter = pq.ParquetWriter(fname_out, table.schema)
+                            first = False
                         pqwriter.write_table(table)
                     else:
                         df_chunk.to_csv(fhandle, header=False, index=False)

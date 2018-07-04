@@ -659,4 +659,3 @@ def test_CombinerCSV_sql(create_files_csv):
     fname_list = create_files_csv_colmismatch()
     df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
     assert helper(fname_list, is_col_common=True).shape[1] == df_chk.shape[1]
-
