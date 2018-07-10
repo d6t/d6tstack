@@ -33,7 +33,7 @@ def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
             dfg = dfg.rename(columns=cfg_col_rename)
     if cfg_col_sel:
         if cfg_col_rename:
-            cfg_col_sel2 = list(set([cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in cfg_col_sel])) # set of columns after rename
+            cfg_col_sel2 = list(dict.fromkeys([cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in cfg_col_sel])) # set of columns after rename
         else:
             cfg_col_sel2 = cfg_col_sel
         dfg = dfg.reindex(columns=cfg_col_sel2)
@@ -49,27 +49,6 @@ def convert_to_sql(df, cnxn_string, table_name, if_exists='replace', chunksize=5
     df.to_sql(table_name, connection, schema=None, if_exists=if_exists, index=True, index_label=None,
               chunksize=chunksize, dtype=None)
     return True
-
-
-def convert_to_csv_parquet(combiner, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
-                           is_col_common=False, overwrite=True, streaming=True, chunksize=1e10, parquet_output=False):
-    if separate_files:
-        combiner.align_save(output_dir=output_dir, suffix=suffix, overwrite=overwrite, is_col_common=is_col_common,
-                            chunksize=chunksize, parquet_output=parquet_output)
-    elif streaming and out_filename:
-        combiner.combine_save(out_filename, chunksize=chunksize, parquet_output=parquet_output)
-    elif out_filename:
-        df = combiner.combine(is_col_common=is_col_common)
-        if parquet_output:
-            import pyarrow as pa
-            import pyarrow.parquet as pq
-            table = pa.Table.from_pandas(df)
-            pq.write_table(table, out_filename)
-        else:
-            fhandle = open(out_filename, 'w')
-            df.to_csv(fhandle, header=True, index=False)
-    else:
-        raise ValueError("out_filename is mandatory when streaming")
 
 
 # ******************************************************************
@@ -90,12 +69,14 @@ class CombinerCSV(object):
         skiprows (int): rows to skip at top of file, see pandas.read_csv()
         nrows_preview (boolean): number of rows in preview
         cfg_filename_col (bool): add filename column to output data frame. If `False`, will not add column.
+        cfg_col_sel (list): list of column names to keep
+        cfg_col_rename (dict): dict of columns to rename `{'name_old':'name_new'}
         logger (object): logger object with send_log()
 
     """
 
     def __init__(self, fname_list, sep=',', has_header = True, all_strings=False, nrows_preview=3, read_csv_params=None,
-                 cfg_filename_col=True, logger=None):
+                 cfg_filename_col=True, cfg_col_sel=None, cfg_col_rename=None, logger=None):
         if not fname_list:
             raise ValueError("Filename list should not be empty")
         self.fname_list = fname_list
@@ -108,7 +89,18 @@ class CombinerCSV(object):
         self.read_csv_params['sep'] = sep
         self.logger = logger
         self.col_preview = None
-        self.cfg_filename_col =cfg_filename_col
+        self.cfg_filename_col = cfg_filename_col
+        self.cfg_col_sel = cfg_col_sel
+        self.cfg_col_rename = cfg_col_rename
+
+        if not self.cfg_col_sel:
+            self.cfg_col_sel = []
+        else:
+            if max(collections.Counter(cfg_col_sel).values())>1:
+                raise ValueError('Duplicate entries in cfg_col_sel')
+
+        if not self.cfg_col_rename:
+            self.cfg_col_rename = {}
 
     def read_csv(self, fname, is_preview=False, chunksize=None):
         cfg_dype = str if self.all_strings else None
@@ -248,10 +240,7 @@ class CombinerCSV(object):
     def combine(self, is_col_common=False, is_preview=False):
         """
         
-        Combines all files
-
-        Note:
-            Unlike `CombinerCSVAdvanced.combine()` this function supports simple combine operations
+        Combines all files. This is in-memory. For out-of-core use `combine_save()`
 
         Args:
             is_col_common (bool): keep only common columns? If `false` returns all columns filled with nans
@@ -262,7 +251,8 @@ class CombinerCSV(object):
 
         """
 
-        dfl_all = self.read_csv_all('reading full file', is_preview=is_preview)
+        dfl_all = self.read_csv_all('reading full file', is_preview=is_preview, cfg_col_sel=self.cfg_col_sel,
+                                    cfg_col_rename=self.cfg_col_rename)
 
         if self.logger:
             self.logger.send_log('combining files', 'ok')
@@ -275,6 +265,19 @@ class CombinerCSV(object):
         self.df_all = df_all
 
         return df_all
+
+    def combine_preview_save(self, fname_out):
+        """
+
+        Save preview to CSV
+
+        Args:
+            fname_out (str): filename
+
+        """
+        df_all_preview = self.preview_combine()
+        df_all_preview.to_csv(fname_out, index=False)
+        return True
 
     def get_output_filename(self, fname, suffix, parquet_output=False):
         basename = os.path.basename(fname)
@@ -291,20 +294,30 @@ class CombinerCSV(object):
             os.makedirs(output_dir)
 
     def get_columns_for_save(self, is_col_common=False):
-        self._preview_available()
-        import copy
-        columns = copy.deepcopy(self.col_preview['columns_common'] if is_col_common
-                                else self.col_preview['columns_all'])
-        if self.cfg_filename_col:
-            columns += ['filename', ]
-        return columns
+        if self.cfg_col_sel:
+            # set of columns after rename
+            cfg_col_sel2 = list(collections.OrderedDict.fromkeys([self.cfg_col_rename[k]
+                                                                  if k in self.cfg_col_rename.keys() else k
+                                                                  for k in self.cfg_col_sel]))
+
+            return cfg_col_sel2
+        else:
+            self._preview_available()
+            import copy
+            columns = copy.deepcopy(self.col_preview['columns_common'] if is_col_common
+                                    else self.col_preview['columns_all'])
+            if self.cfg_filename_col:
+                columns += ['filename', ]
+            return columns
 
     def save_files(self, columns, out_filename=None, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10,
-                   cfg_col_sel2=None, cfg_col_rename=None, parquet_output=False):
+                   cfg_col_sel2=None, parquet_output=False):
         if parquet_output:
             import pyarrow as pa
             import pyarrow.parquet as pq
         df_all_header = pd.DataFrame(columns=columns)
+        if out_filename and not overwrite and os.path.isfile(out_filename):
+            raise ValueError("File already exists. Please pass overwrite=True for overwriting")
         if out_filename:
             if not parquet_output:
                 fhandle = open(out_filename, 'w')
@@ -319,7 +332,7 @@ class CombinerCSV(object):
                 fname_out = os.path.join(output_dir, new_name)
             else:
                 fname_out = os.path.join(os.path.dirname(fname), new_name)
-            if not overwrite and os.path.isfile(fname_out):
+            if not out_filename and not overwrite and os.path.isfile(fname_out):
                 warnings.warn("File already exists. Please pass overwrite=True for overwriting")
             else:
                 if not out_filename:
@@ -328,8 +341,8 @@ class CombinerCSV(object):
                         df_all_header.to_csv(fhandle, header=True, index=False)
                     first = True
                 for df_chunk in self.read_csv(fname, chunksize=chunksize):
-                    if cfg_col_sel2 or cfg_col_rename:
-                        df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, cfg_col_rename)
+                    if cfg_col_sel2 or self.cfg_col_rename:
+                        df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, self.cfg_col_rename)
                     if self.cfg_filename_col:
                         df_chunk['filename'] = ntpath.basename(new_name)
                     if parquet_output:
@@ -363,10 +376,34 @@ class CombinerCSV(object):
             is_col_common (bool): Use common columns else all columns, default False, optional
 
         """
-        columns = self.get_columns_for_save(is_col_common=is_col_common)
+        cfg_col_sel2 = self.get_columns_for_save(is_col_common=is_col_common)
+
+        columns = cfg_col_sel2
+        if self.cfg_filename_col and self.cfg_col_sel:
+            columns += ['filename', ]
 
         return self.save_files(columns, output_dir=output_dir, suffix=suffix, overwrite=overwrite,
                                chunksize=chunksize, cfg_col_sel2=columns, parquet_output=parquet_output)
+
+    def combine_save(self, fname_out, chunksize=1e10, is_col_common=False, parquet_output=False):
+        """
+
+        Save combined data directly to CSV. This implements out-of-core combine functionality to combine large files. For in-memory use `combine()`
+
+        Args:
+            fname_out (str): filename
+
+        """
+        cfg_col_sel2 = self.get_columns_for_save(is_col_common=is_col_common)
+
+        columns = cfg_col_sel2
+        if self.cfg_filename_col and self.cfg_col_sel:
+            columns += ['filename', ]
+
+        self.create_output_dir(os.path.dirname(fname_out))
+
+        return self.save_files(columns, out_filename=fname_out, chunksize=chunksize, cfg_col_sel2=cfg_col_sel2,
+                               overwrite=True, parquet_output=parquet_output)
 
     def to_sql(self, cnxn_string, table_name, is_col_common=False, is_preview=False,
                if_exists='replace', chunksize=5000):
@@ -386,8 +423,7 @@ class CombinerCSV(object):
         return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
 
     def to_sql_stream(self, cnxn_string, table_name, if_exists='replace',
-                      chunksize=1e10, sql_chunksize=5000, cfg_col_sel=None,
-                      is_col_common=False, cfg_col_rename=None):
+                      chunksize=1e10, sql_chunksize=5000, is_col_common=False):
         """
 
             Save combined large files in chunks to sql.
@@ -400,8 +436,8 @@ class CombinerCSV(object):
                 if_exists (str): replace or append to existing table, optional
                 chunksize (int): Number of lines to be used to extract from file each time.
                 sql_chunksize (int): Number of rows to be inserted to table at one time.
-                cfg_col_rename (dict): dict mapping for new column names
         """
+        cfg_col_sel = self.cfg_col_sel
         if not cfg_col_sel:
             cfg_col_sel = self.get_columns_for_save(is_col_common=is_col_common)
         first_time = True
@@ -409,8 +445,8 @@ class CombinerCSV(object):
             if self.logger:
                 self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
             for df_chunk in self.read_csv(fname, chunksize=chunksize):
-                if cfg_col_sel or cfg_col_rename:
-                    df_chunk = apply_select_rename(df_chunk, cfg_col_sel, cfg_col_rename)
+                if cfg_col_sel or self.cfg_col_rename:
+                    df_chunk = apply_select_rename(df_chunk, cfg_col_sel, self.cfg_col_rename)
                 if self.cfg_filename_col:
                     df_chunk['filename'] = ntpath.basename(fname)
                 if first_time:
@@ -422,8 +458,29 @@ class CombinerCSV(object):
                                chunksize=sql_chunksize)
         return True
 
+    def convert_to_csv_parquet(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
+                               is_col_common=False, overwrite=True, streaming=True, chunksize=1e10,
+                               parquet_output=False):
+        if separate_files:
+            self.align_save(output_dir=output_dir, suffix=suffix, overwrite=overwrite, is_col_common=is_col_common,
+                            chunksize=chunksize, parquet_output=parquet_output)
+        elif streaming and out_filename:
+            self.combine_save(out_filename, chunksize=chunksize, parquet_output=parquet_output)
+        elif out_filename:
+            df = self.combine(is_col_common=is_col_common)
+            if parquet_output:
+                import pyarrow as pa
+                import pyarrow.parquet as pq
+                table = pa.Table.from_pandas(df)
+                pq.write_table(table, out_filename)
+            else:
+                fhandle = open(out_filename, 'w')
+                df.to_csv(fhandle, header=True, index=False)
+        else:
+            raise ValueError("out_filename is mandatory when streaming")
+
     def to_csv(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
-               is_col_common=False, overwrite=True, chunksize=1e10):
+               is_col_common=False, overwrite=True, streaming=False, chunksize=1e10):
         """
 
         Convert the files to combined csv or separate csv after aligning the columns
@@ -438,12 +495,12 @@ class CombinerCSV(object):
 
         """
 
-        convert_to_csv_parquet(self, out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
-                               is_col_common=is_col_common, suffix=suffix, overwrite=overwrite,
-                               streaming=False, chunksize=chunksize)
+        self.convert_to_csv_parquet(out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
+                                    is_col_common=is_col_common, suffix=suffix, overwrite=overwrite,
+                                    streaming=streaming, chunksize=chunksize)
 
     def to_parquet(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
-                   is_col_common=False, overwrite=True, chunksize=1e10):
+                   is_col_common=False, overwrite=True, streaming=False, chunksize=1e10):
         """
 
         Convert the files to combined csv or separate csv after aligning the columns
@@ -457,209 +514,6 @@ class CombinerCSV(object):
             chunksize (int): chunksize to be used for writing large files in chunks
 
         """
-        convert_to_csv_parquet(self, out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
-                               suffix=suffix, overwrite=overwrite, streaming=False, chunksize=chunksize,
-                               is_col_common=is_col_common, parquet_output=True)
-
-
-# ******************************************************************
-# advanced
-# ******************************************************************
-
-
-class CombinerCSVAdvanced(object):
-    """
-
-    Combiner class with advanced features. Allows renaming, selecting of columns and out-of-core combining
-
-    Args:
-        combiner (object): instance of CombinerCSV
-        cfg_col_sel (list): list of column names to keep
-        cfg_col_rename (dict): dict of columns to rename `{'name_old':'name_new'}
-
-    """
-
-    def __init__(self, combiner: CombinerCSV, cfg_col_sel=None, cfg_col_rename=None):
-        self.combiner = combiner
-        self.cfg_col_sel = cfg_col_sel
-        self.cfg_col_rename = cfg_col_rename
-        self.cfg_filename_col = combiner.cfg_filename_col
-
-        if not self.cfg_col_sel:
-            self.cfg_col_sel = []
-        else:
-            if max(collections.Counter(cfg_col_sel).values())>1:
-                raise ValueError('Duplicate entries in cfg_col_sel')
-
-        if not self.cfg_col_rename:
-            self.cfg_col_rename = {}
-
-    def preview_combine(self):
-        """
-
-        Preview of combines all files
-
-        Returns:
-            df_all (dataframe): pandas dataframe with combined data from all files, only self.combiner.nrows_preview top rows
-
-        """
-        df_all = self.combiner.read_csv_all(msg='reading preview file', is_preview=True, cfg_col_sel=self.cfg_col_sel,
-                                            cfg_col_rename=self.cfg_col_rename)
-        df_all = pd.concat(df_all)
-        return df_all
-
-    def combine_preview_save(self, fname_out):
-        """
-
-        Save preview to CSV
-
-        Args:
-            fname_out (str): filename
-
-        """
-        df_all_preview = self.preview_combine()
-        df_all_preview.to_csv(fname_out, index=False)
-        return True
-
-    def combine(self):
-        """
-
-        Combines all files. This is in-memory. For out-of-core use `combine_save()`
-
-        Returns:
-            df_all (dataframe): pandas dataframe with combined data from all files
-
-        """
-        df_all = self.combiner.read_csv_all(msg='reading full file', cfg_col_sel=self.cfg_col_sel,
-                                            cfg_col_rename=self.cfg_col_rename)
-        df_all = pd.concat(df_all)
-        return df_all
-
-    def get_columns_for_save(self):
-        if not self.cfg_col_sel:
-            raise ValueError('Need to provide cfg_col_sel in constructor to use align_save()')
-
-        # set of columns after rename
-        cfg_col_sel2 = list(collections.OrderedDict.fromkeys([self.cfg_col_rename[k]
-                                                              if k in self.cfg_col_rename.keys() else k
-                                                              for k in self.cfg_col_sel]))
-
-        return cfg_col_sel2
-
-    def combine_save(self, fname_out, chunksize=1e10):
-        """
-
-        Save combined data directly to CSV. This implements out-of-core combine functionality to combine large files. For in-memory use `combine()`
-
-        Args:
-            fname_out (str): filename
-
-        """
-        cfg_col_sel2 = self.get_columns_for_save()
-
-        columns = cfg_col_sel2
-        if self.cfg_filename_col:
-            columns += ['filename', ]
-
-        self.combiner.create_output_dir(os.path.dirname(fname_out))
-
-        return self.combiner.save_files(columns, chunksize=chunksize,
-                                        cfg_col_sel2=cfg_col_sel2, cfg_col_rename=self.cfg_col_rename,
-                                        overwrite=True)
-
-    def align_save(self, output_dir=None, suffix='-matched', overwrite=True, chunksize=1e10):
-        """
-
-        Save files aligning the columns for large files. For combined save use `combine_save()`
-
-        Args:
-            output_dir (str): output directory to save, default input file directory, optional
-            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
-            overwrite (bool): overwrite file if exists, default True, optional
-
-        """
-        cfg_col_sel2 = self.get_columns_for_save()
-        columns = cfg_col_sel2
-        if self.cfg_filename_col:
-            columns += ['filename', ]
-
-        self.combiner.save_files(columns, output_dir=output_dir, suffix=suffix, overwrite=overwrite,
-                                 chunksize=chunksize, cfg_col_sel2=cfg_col_sel2,
-                                 cfg_col_rename=self.cfg_col_rename)
-
-        return True
-
-    def to_sql(self, cnxn_string, table_name, if_exists='replace', chunksize=5000):
-        """
-
-            Save combined files to sql.
-
-            Args:
-                cnxn_string (str): connection string to connect to database
-                table_name (str): table name to be used to store the data to database
-                if_exists (str): replace or append to existing table, optional
-                chunksize (int): Number of rows to be inserted to table at one time.
-        """
-        df = self.combine()
-        return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
-
-    def to_sql_stream(self, cnxn_string, table_name, if_exists='replace',
-                      chunksize=1e10, sql_chunksize=5000):
-        """
-
-            Save combined large files in chunks to sql.
-
-            Args:
-                cnxn_string (str): connection string to connect to database
-                table_name (str): table name to be used to store the data to database
-                is_col_common (bool): Use common columns else all columns, default False, optional
-                is_preview (bool): read only self.nrows_preview top rows
-                if_exists (str): replace or append to existing table, optional
-                chunksize (int): Number of lines to be used to extract from file each time.
-                sql_chunksize (int): Number of rows to be inserted to table at one time.
-                cfg_col_rename (dict): dict mapping for new column names
-        """
-
-        cfg_col_sel = self.get_columns_for_save()
-        return self.combiner.to_sql_stream(cnxn_string, table_name, if_exists=if_exists,
-                                           chunksize=chunksize, sql_chunksize=sql_chunksize,
-                                           cfg_col_sel=cfg_col_sel, cfg_col_rename=self.cfg_col_rename)
-
-    def to_csv(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
-               overwrite=True, streaming=True, chunksize=1e10):
-        """
-
-        Convert the files to combined csv or separate csv after aligning the columns
-
-        Args:
-            out_filename (str): when combining this is mandatory
-            separate_files (bool): convert to csv after aligning columns (without combining)
-            output_dir (str): output directory to save for separate files, default input file directory, optional
-            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
-            overwrite (bool): overwrite file if exists, default True, optional
-            streaming (bool): create combined csv, default True, optional
-            chunksize (int): chunksize to be used for writing large files in chunks
-
-        """
-        convert_to_csv_parquet(self, out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
-                               suffix=suffix, overwrite=overwrite, streaming=streaming, chunksize=chunksize)
-
-    def to_parquet(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
-                   overwrite=True, streaming=True, chunksize=1e10):
-        """
-
-        Convert the files to combined csv or separate csv after aligning the columns
-
-        Args:
-            out_filename (str): when combining this is mandatory
-            separate_files (bool): convert to csv after aligning columns (without combining)
-            output_dir (str): output directory to save for separate files, default input file directory, optional
-            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
-            overwrite (bool): overwrite file if exists, default True, optional
-            streaming (bool): create combined csv, default True, optional
-            chunksize (int): chunksize to be used for writing large files in chunks
-
-        """
-        convert_to_csv_parquet(self, out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
-                               suffix=suffix, overwrite=overwrite, streaming=streaming, chunksize=chunksize,
-                               parquet_output=True)
+        self.convert_to_csv_parquet(out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
+                                    suffix=suffix, overwrite=overwrite, streaming=streaming, chunksize=chunksize,
+                                    is_col_common=is_col_common, parquet_output=True)
