@@ -24,6 +24,8 @@ from d6tstack.combine_csv import *
 from d6tstack.sniffer import CSVSniffer
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import ntpath
 
 import pytest
@@ -450,6 +452,12 @@ def create_out_files_csv_align_save():
     return [cfg_outname % '11', cfg_outname % '12',cfg_outname % '21',cfg_outname % '22']
 
 
+@pytest.fixture(scope="module")
+def create_out_files_parquet_align_save():
+    cfg_outname = cfg_fname_base_out + 'input-csv-rename-%s-align-save.parquet'
+    return [cfg_outname % '11', cfg_outname % '12',cfg_outname % '21',cfg_outname % '22']
+
+
 def test_apply_select_rename():
     df11, df12, df21, df22 = create_df_rename()
 
@@ -465,7 +473,7 @@ def test_apply_select_rename():
     assert df21[list(dict.fromkeys(df21.columns))].equals(apply_select_rename(df22.copy(),['a','c'],{'b':'a'}))
 
     with pytest.warns(UserWarning, match="Renaming conflict"):
-        assert df12.equals(apply_select_rename(df22.copy(), ['b', 'c'], {'c': 'b'}))
+        assert df22.equals(apply_select_rename(df22.copy(), ['b', 'c'], {'c': 'b'}))
 
 
 def test_CombinerCSV_rename(create_files_csv_rename):
@@ -687,6 +695,42 @@ def test_combinercsv_to_csv(create_files_csv_rename, create_out_files_csv_align_
     assert dfc.equals(df_chk)
 
     fname_out = cfg_fname_base_out_dir + '/test_save.csv'
-    c2.to_csv(out_filename=fname_out, separate_files=False, streaming=True)
+    c3.to_csv(out_filename=fname_out, separate_files=False, streaming=True)
     dfc = pd.read_csv(fname_out)
+    dfc = dfc.drop(['filename'], 1)
     assert dfc.equals(df_chk.reset_index(drop=True))
+
+
+def test_combinercsv_to_parquet(create_files_csv_rename, create_out_files_parquet_align_save):
+    fnames = create_files_csv_rename
+    df11, df12, df21, df22 = create_df_rename()
+
+    # error when separate files is False and no out_filename
+    with pytest.raises(ValueError):
+        c = CombinerCSV(fnames)
+        c.to_parquet(separate_files=False)
+
+    # to_csv will call align_save
+    fnames = create_files_csv_rename[:2]
+    new_names = create_out_files_parquet_align_save[:2]
+    c2 = CombinerCSV(fnames, cfg_col_sel=['a'],
+                     cfg_col_rename={'b': 'a'}, cfg_filename_col=False)
+    c2.to_parquet(output_dir=cfg_fname_base_out_dir, suffix="-align-save")
+    df_chks = [df11, df11]
+    for fname_out, df_chk in zip(new_names, df_chks):
+        table = pq.read_table(fname_out)
+        dfc = table.to_pandas()
+        assert dfc.equals(df_chk)
+
+    # to_csv will call combine_save
+    df_chk = pd.concat([df11, df11])
+    fnames = [create_files_csv_rename[0], create_files_csv_rename[-1]]
+
+    c3 = CombinerCSV(fnames, cfg_col_sel=['a'], cfg_col_rename={'b': 'a'})
+
+    fname_out = cfg_fname_base_out_dir + '/test_save.parquet'
+    c3.to_parquet(out_filename=fname_out, separate_files=False, streaming=True)
+    table = pq.read_table(fname_out)
+    dfc = table.to_pandas()
+    dfc = dfc.drop(['filename'], 1)
+    assert dfc.equals(df_chk)
