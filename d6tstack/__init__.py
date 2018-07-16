@@ -1,4 +1,4 @@
-from .combine_csv import *
-from .convert_xls import *
-from .sniffer import *
-from .sync import *
+import d6tstack.combine_csv
+import d6tstack.convert_xls
+import d6tstack.sniffer
+import d6tstack.sync
