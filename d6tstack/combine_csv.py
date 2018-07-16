@@ -46,11 +46,14 @@ def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
     return dfg
 
 
-def convert_to_sql(df, cnxn_string, table_name, if_exists='replace', chunksize=5000):
+def create_sql_connection(cnxn_string):
     engine = create_engine(cnxn_string)
     connection = engine.connect()
     connection.dialect.supports_multivalues_insert = True
+    return connection
 
+
+def convert_to_sql(df, connection, table_name, if_exists='replace', chunksize=5000):
     df.to_sql(table_name, connection, schema=None, if_exists=if_exists, index=True, index_label=None,
               chunksize=chunksize, dtype=None)
     return True
@@ -425,7 +428,10 @@ class CombinerCSV(object):
                 chunksize (int): Number of rows to be inserted to table at one time.
         """
         df = self.combine(is_col_common=is_col_common, is_preview=is_preview)
-        return convert_to_sql(df, cnxn_string, table_name, if_exists=if_exists, chunksize=chunksize)
+        connection = create_sql_connection(cnxn_string)
+        convert_to_sql(df, connection, table_name, if_exists=if_exists, chunksize=chunksize)
+        connection.close()
+        return True
 
     def to_sql_stream(self, cnxn_string, table_name, if_exists='replace',
                       chunksize=1e10, sql_chunksize=5000, is_col_common=False):
@@ -446,6 +452,7 @@ class CombinerCSV(object):
         if not cfg_col_sel:
             cfg_col_sel = self.get_columns_for_save(is_col_common=is_col_common)
         first_time = True
+        connection = create_sql_connection(cnxn_string)
         for fname in self.fname_list:
             if self.logger:
                 self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
@@ -459,8 +466,9 @@ class CombinerCSV(object):
                     first_time = False
                 else:
                     if_exists = 'append'
-                convert_to_sql(df_chunk, cnxn_string, table_name, if_exists=if_exists,
+                convert_to_sql(df_chunk, connection, table_name, if_exists=if_exists,
                                chunksize=sql_chunksize)
+        connection.close()
         return True
 
     def convert_to_csv_parquet(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
