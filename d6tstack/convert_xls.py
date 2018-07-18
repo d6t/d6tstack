@@ -58,7 +58,10 @@ class XLStoBase(object):
         """
 
         if self.logger:
-            self.logger.send_log('converting file: '+ntpath.basename(fname)+' | sheet: '+ str(self.cfg_xls_sheets_sel[fname]),'ok')
+            msg = 'converting file: '+ntpath.basename(fname)+' | sheet: '
+            if hasattr(self, 'cfg_xls_sheets_sel'):
+                msg += str(self.cfg_xls_sheets_sel[fname])
+            self.logger.send_log(msg,'ok')
 
         fname_out = fname + '-' + str(sheet_name) + '.csv'
         fname_out, is_skip = self._get_output_filename(fname_out)
@@ -92,7 +95,7 @@ class XLStoCSVMultiFile(XLStoBase):
 
     """
 
-    def __init__(self, fname_list, cfg_xls_sheets_sel_mode, cfg_xls_sheets_sel,
+    def __init__(self, fname_list, cfg_xls_sheets_sel_mode='idx_global', cfg_xls_sheets_sel=0,
                  output_dir=None, if_exists='skip', logger=None):
         super().__init__(if_exists, output_dir, logger)
         if not fname_list:
