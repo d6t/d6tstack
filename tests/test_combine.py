@@ -695,6 +695,8 @@ def test_combinercsv_to_csv(create_files_csv_rename, create_out_files_csv_align_
     assert dfc.equals(df_chk)
 
     fname_out = cfg_fname_base_out_dir + '/test_save.csv'
+    with pytest.warns(UserWarning, match="File already exists"):
+        c3.to_csv(out_filename=fname_out, separate_files=False, streaming=True, overwrite=False)
     c3.to_csv(out_filename=fname_out, separate_files=False, streaming=True)
     dfc = pd.read_csv(fname_out)
     dfc = dfc.drop(['filename'], 1)

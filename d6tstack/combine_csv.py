@@ -325,7 +325,8 @@ class CombinerCSV(object):
             import pyarrow.parquet as pq
         df_all_header = pd.DataFrame(columns=columns)
         if out_filename and not overwrite and os.path.isfile(out_filename):
-            raise ValueError("File already exists. Please pass overwrite=True for overwriting")
+            warnings.warn("File already exists. Please pass overwrite=True for overwriting")
+            return True
         if out_filename:
             if not parquet_output:
                 fhandle = open(out_filename, 'w')
@@ -393,7 +394,7 @@ class CombinerCSV(object):
         return self.save_files(columns, output_dir=output_dir, suffix=suffix, overwrite=overwrite,
                                chunksize=chunksize, cfg_col_sel2=columns, parquet_output=parquet_output)
 
-    def combine_save(self, fname_out, chunksize=1e10, is_col_common=False, parquet_output=False):
+    def combine_save(self, fname_out, chunksize=1e10, is_col_common=False, parquet_output=False, overwrite=True):
         """
 
         Save combined data directly to CSV. This implements out-of-core combine functionality to combine large files. For in-memory use `combine()`
@@ -411,7 +412,7 @@ class CombinerCSV(object):
         self.create_output_dir(os.path.dirname(fname_out))
 
         return self.save_files(columns, out_filename=fname_out, chunksize=chunksize, cfg_col_sel2=cfg_col_sel2,
-                               overwrite=True, parquet_output=parquet_output)
+                               overwrite=overwrite, parquet_output=parquet_output)
 
     def to_sql(self, cnxn_string, table_name, is_col_common=False, is_preview=False,
                if_exists='replace', chunksize=5000):
@@ -478,7 +479,7 @@ class CombinerCSV(object):
             self.align_save(output_dir=output_dir, suffix=suffix, overwrite=overwrite, is_col_common=is_col_common,
                             chunksize=chunksize, parquet_output=parquet_output)
         elif streaming and out_filename:
-            self.combine_save(out_filename, chunksize=chunksize, parquet_output=parquet_output)
+            self.combine_save(out_filename, chunksize=chunksize, parquet_output=parquet_output, overwrite=overwrite)
         elif out_filename:
             df = self.combine(is_col_common=is_col_common)
             if parquet_output:
