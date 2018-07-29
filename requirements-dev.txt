@@ -2,3 +2,4 @@ pytest
 sphinx
 sphinxcontrib-napoleon
 sphinx_rtd_theme
+moto==1.3.3

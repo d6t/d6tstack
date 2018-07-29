@@ -21,8 +21,11 @@ Notes:
 """
 
 from d6tstack.combine_csv import *
+from d6tstack.sniffer import CSVSniffer
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import ntpath
 
 import pytest
@@ -30,6 +33,7 @@ import pytest
 cfg_fname_base_in = 'test-data/input/test-data-'
 cfg_fname_base_out_dir = 'test-data/output'
 cfg_fname_base_out = cfg_fname_base_out_dir+'/test-data-'
+cnxn_string = 'sqlite:///test-data/db/{}.db'
 
 #************************************************************
 # fixtures
@@ -62,6 +66,17 @@ def create_files_df_clean_combine():
     df_all = pd.concat([df1,df2,df3])
     df_all = df_all[df_all.columns].astype(str)
     
+    return df_all
+
+
+def create_files_df_clean_combine_with_filename(fname_list):
+    df1, df2, df3 = create_files_df_clean()
+    df1['filename'] = os.path.basename(fname_list[0])
+    df2['filename'] = os.path.basename(fname_list[1])
+    df3['filename'] = os.path.basename(fname_list[2])
+    df_all = pd.concat([df1, df2, df3])
+    df_all = df_all[df_all.columns].astype(str)
+
     return df_all
 
 
@@ -162,8 +177,9 @@ def create_files_csv_noheader():
 def create_files_csv_col_renamed():
 
     df1, df2, df3 = create_files_df_clean()
+    df3 = df3.rename(columns={'sales':'revenue'})
     cfg_col = ['date', 'sales', 'profit', 'cost']
-    cfg_col2 = ['date', 'sales', 'profit_renamed', 'cost']
+    cfg_col2 = ['date', 'revenue', 'profit', 'cost']
 
     cfg_fname = cfg_fname_base_in + 'input-csv-renamed-%s.csv'
     df1[cfg_col].to_csv(cfg_fname % 'jan', index=False)
@@ -171,6 +187,9 @@ def create_files_csv_col_renamed():
     df3[cfg_col2].to_csv(cfg_fname % 'mar', index=False)
 
     return [cfg_fname % 'jan', cfg_fname % 'feb', cfg_fname % 'mar']
+
+def test_create_files_csv_col_renamed(create_files_csv_col_renamed):
+    pass
 
 def create_files_csv_dirty(cfg_sep=",", cfg_header=True):
 
@@ -294,6 +313,9 @@ def test_csv_sniff_multi(create_files_csv, create_files_csv_noheader):
 
 def test_CombinerCSV_columns(create_files_csv, create_files_csv_colmismatch, create_files_csv_colreorder):
 
+    with pytest.raises(ValueError) as e:
+        c = CombinerCSV([])
+
     fname_list = create_files_csv
     combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
     col_preview = combiner.preview_columns()
@@ -340,7 +362,7 @@ def test_CombinerCSV_combine(create_files_csv, create_files_csv_colmismatch, cre
 
     # columns mismatch, all columns
     fname_list = create_files_csv_colmismatch
-    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True, add_filename=True)
     df = combiner.combine()
     df = df.sort_values('date').drop(['filename'],axis=1)
     df_chk = create_files_df_colmismatch_combine(cfg_col_common=False)
@@ -352,13 +374,30 @@ def test_CombinerCSV_combine(create_files_csv, create_files_csv_colmismatch, cre
     df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
     assert df.shape[1] == df_chk.shape[1]
 
+    # Filename column True
+    fname_list = create_files_csv
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
+    df = combiner.combine()
 
-def test_CombinerCSVAdvanced_combine(create_files_csv):
+    df = df.sort_values('date')
+    df_chk = create_files_df_clean_combine_with_filename(fname_list)
+    assert df.equals(df_chk)
+
+    # Filename column False
+    combiner = CombinerCSV(fname_list=fname_list, all_strings=True, add_filename=False)
+    df = combiner.combine()
+    df = df.sort_values('date')
+    df_chk = create_files_df_clean_combine()
+    assert df.equals(df_chk)
+
+
+def test_CombinerCSV_combine_advanced(create_files_csv):
 
     # Check if rename worked correctly.
     fname_list = create_files_csv
     combiner = CombinerCSV(fname_list=fname_list, all_strings=True)
-    adv_combiner = CombinerCSVAdvanced(combiner, cfg_col_sel=None, cfg_col_rename={'date':'date1'})
+    adv_combiner = CombinerCSV(fname_list=fname_list, all_strings=True,
+                               columns_select=None, columns_rename={'date':'date1'})
 
     df = adv_combiner.combine()
     assert 'date1' in df.columns.values
@@ -368,7 +407,8 @@ def test_CombinerCSVAdvanced_combine(create_files_csv):
     assert 'date1' in df.columns.values
     assert 'date' not in df.columns.values
 
-    adv_combiner = CombinerCSVAdvanced(combiner, cfg_col_sel=['cost', 'date', 'profit', 'profit2', 'sales'])
+    adv_combiner = CombinerCSV(fname_list=fname_list, all_strings=True,
+                               columns_select=['cost', 'date', 'profit', 'profit2', 'sales'])
 
     df = adv_combiner.combine()
     assert 'profit2' in df.columns.values
@@ -385,7 +425,7 @@ def test_preview_dict():
 
 
 #************************************************************
-# tests - CombinerCSVAdvanced rename
+# tests - CombinerCSV rename and select columns
 #************************************************************
 def create_df_rename():
     df11 = pd.DataFrame({'a':range(10)})
@@ -409,11 +449,20 @@ def create_files_csv_rename():
 
     return [cfg_fname % '11',cfg_fname % '12',cfg_fname % '21',cfg_fname % '22']
 
+def test_create_files_csv_rename(create_files_csv_rename):
+    pass
 
 @pytest.fixture(scope="module")
 def create_out_files_csv_align_save():
     cfg_outname = cfg_fname_base_out + 'input-csv-rename-%s-align-save.csv'
     return [cfg_outname % '11', cfg_outname % '12',cfg_outname % '21',cfg_outname % '22']
+
+
+@pytest.fixture(scope="module")
+def create_out_files_parquet_align_save():
+    cfg_outname = cfg_fname_base_out + 'input-csv-rename-%s-align-save.parquet'
+    return [cfg_outname % '11', cfg_outname % '12',cfg_outname % '21',cfg_outname % '22']
+
 
 def test_apply_select_rename():
     df11, df12, df21, df22 = create_df_rename()
@@ -426,36 +475,38 @@ def test_apply_select_rename():
     assert df11.equals(apply_select_rename(df22.copy(),['a'],{'b':'a'}))
 
     # rename and select 2
-    assert df21[list(set(df21.columns))].equals(apply_select_rename(df22.copy(),['b','c'],{'b':'a'}))
-    assert df21[list(set(df21.columns))].equals(apply_select_rename(df22.copy(),['a','c'],{'b':'a'}))
+    assert df21[list(dict.fromkeys(df21.columns))].equals(apply_select_rename(df22.copy(),['b','c'],{'b':'a'}))
+    assert df21[list(dict.fromkeys(df21.columns))].equals(apply_select_rename(df22.copy(),['a','c'],{'b':'a'}))
 
-    with pytest.raises(ValueError) as e:
-        assert df21.equals(apply_select_rename(df22.copy(), ['b', 'c'], {'b': 'c'}))
+    with pytest.warns(UserWarning, match="Renaming conflict"):
+        assert df22.equals(apply_select_rename(df22.copy(), ['b', 'c'], {'c': 'b'}))
 
 
-def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
+def test_CombinerCSV_rename(create_files_csv_rename):
     df11, df12, df21, df22 = create_df_rename()
     df_chk1 = pd.concat([df11,df11])
     df_chk2 = pd.concat([df11,df21])
 
-    def helper(fnames,cfg_col_sel,cfg_col_rename, df_chk):
-        c = CombinerCSV(fnames)
+    def helper(fnames, cfg_col_sel,cfg_col_rename, df_chk, chk_filename=False, is_filename_col=True):
         if cfg_col_sel and cfg_col_rename:
-            c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col,
+                             columns_select=cfg_col_sel, columns_rename=cfg_col_rename)
         elif cfg_col_rename:
-            c2 = CombinerCSVAdvanced(c, cfg_col_rename=cfg_col_rename)
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col, columns_rename=cfg_col_rename)
         else:
-            c2 = CombinerCSVAdvanced(c)
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col)
 
-        dfc = c2.combine().drop(['filename'], 1)
+        dfc = c2.combine()
+        if (not chk_filename) and is_filename_col:
+            dfc = dfc.drop(['filename'], 1)
         assert dfc.equals(df_chk)
 
         if cfg_col_sel:
             fname_out = cfg_fname_base_out_dir + '/test_save.csv'
             c2.combine_save(fname_out)
             dfc = pd.read_csv(fname_out)
-            dfc = dfc.drop(['filename'], 1)
-            print(dfc, df_chk.reset_index(drop=True))
+            if (not chk_filename) or is_filename_col:
+                dfc = dfc.drop(['filename'], 1)
             assert dfc.equals(df_chk.reset_index(drop=True))
 
     # rename 1, select all
@@ -463,8 +514,7 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
     helper(l,None,{'b':'a'},df_chk1)
 
     with pytest.raises(ValueError) as e:
-        c = CombinerCSV(l)
-        c2 = CombinerCSVAdvanced(c, cfg_col_sel=['a','a'])
+        c2 = CombinerCSV(l, columns_select=['a','a'])
 
     # rename 1, select some
     l = [create_files_csv_rename[0],create_files_csv_rename[-1]]
@@ -477,45 +527,47 @@ def test_CombinerCSVAdvanced_rename(create_files_csv_rename):
     helper(l,['b'],{'b':'a'},df_chk1)
     helper(l,None,{'b':'a'},df_chk2)
 
-    with pytest.raises(ValueError) as e:
-        c = CombinerCSV(l)
-        c2 = CombinerCSVAdvanced(c, cfg_col_rename={'b':'a','c':'a'})
+    with pytest.warns(UserWarning, match="Renaming conflict"):
+        c2 = CombinerCSV(l, columns_rename={'b': 'a', 'c': 'a'})
         c2.combine()
 
     # rename none, select all
     l = [create_files_csv_rename[0],create_files_csv_rename[2]]
     helper(l,None,None,df_chk2)
 
+    # filename col True
+    df31 = df11
+    df32 = df21
+    df31['filename'] = os.path.basename(l[0])
+    df32['filename'] = os.path.basename(l[1])
+    df_chk3 = pd.concat([df31, df32])
+    helper(l, None, None, df_chk3, is_filename_col=True, chk_filename=True)
+    helper(l, None, None, df_chk2, is_filename_col=False, chk_filename=True)
 
-def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_files_csv_align_save):
+
+def test_CombinerCSV_align_save_advanced(create_files_csv_rename, create_out_files_csv_align_save):
     df11, df12, df21, df22 = create_df_rename()
 
-    def helper(fnames, cfg_col_sel, cfg_col_rename, new_fnames, df_chks):
-        c = CombinerCSV(fnames)
+    def helper(fnames, cfg_col_sel, cfg_col_rename, new_fnames, df_chks, is_filename_col=False):
         if cfg_col_sel and cfg_col_rename:
-            c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel, cfg_col_rename=cfg_col_rename)
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col,
+                             columns_select=cfg_col_sel, columns_rename=cfg_col_rename)
         elif cfg_col_sel:
-            c2 = CombinerCSVAdvanced(c, cfg_col_sel=cfg_col_sel)
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col, columns_select=cfg_col_sel)
         elif cfg_col_rename:
-            c2 = CombinerCSVAdvanced(c, cfg_col_rename=cfg_col_rename)
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col, columns_rename=cfg_col_rename)
         else:
-            c2 = CombinerCSVAdvanced(c)
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col)
             
-        c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save", is_filename_col=False)
+        c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save")
         for fname_out, df_chk in zip(new_fnames, df_chks):
             dfc = pd.read_csv(fname_out)
-            print(dfc, df_chk)
             assert dfc.equals(df_chk)
         
     # rename 1, select all
     l = create_files_csv_rename[:2]
     outl = create_out_files_csv_align_save[:2]
     helper(l, ['a'], {'b':'a'}, outl, [df11, df11])
-
-    with pytest.raises(ValueError) as e:
-        c = CombinerCSV(l)
-        c2 = CombinerCSVAdvanced(c)
-        c2.align_save()
 
     # rename 1, select some
     l = [create_files_csv_rename[2]]
@@ -532,4 +584,161 @@ def test_CombinerCSVAdvanced_align_save(create_files_csv_rename, create_out_file
     outl = [create_out_files_csv_align_save[2]]
     helper(l, ['a', 'c'], None, outl, [df21])
 
+    # rename none, select all, filename col true
+    df21['filename'] = os.path.basename(outl[0])
+    helper(l, ['a', 'c'], None, outl, [df21], is_filename_col=True)
 
+
+def test_CombinerCSV_sql_advanced(create_files_csv_rename):
+    df11, df12, df21, df22 = create_df_rename()
+
+    def helper(fnames, cfg_col_sel, cfg_col_rename, df_chks, is_filename_col=False, stream=False):
+        if cfg_col_sel and cfg_col_rename:
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col,
+                             columns_select=cfg_col_sel, columns_rename=cfg_col_rename)
+        elif cfg_col_sel:
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col, columns_select=cfg_col_sel)
+        elif cfg_col_rename:
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col, columns_rename=cfg_col_rename)
+        else:
+            c2 = CombinerCSV(fnames, add_filename=is_filename_col)
+        df_chk = pd.DataFrame()
+        for df in df_chks:
+            df_chk = df_chk.append(df)
+        table_name = 'test'
+        db_cnxn_string = cnxn_string.format('test-combined-adv')
+        if stream:
+            c2.to_sql_stream(db_cnxn_string, table_name)
+        else:
+            c2.to_sql(db_cnxn_string, table_name)
+        dfc = pd.read_sql("select * from test", db_cnxn_string)
+        dfc = dfc.set_index('index')
+        dfc.index.name = None
+        pd.testing.assert_frame_equal(dfc, df_chk)
+        assert dfc.equals(df_chk)
+
+    # rename 1, select all
+    l = create_files_csv_rename[:2]
+    helper(l, ['a'], {'b': 'a'}, [df11, df11], stream=True)
+
+    # test sql stream
+    helper(l, ['a'], {'b': 'a'}, [df11, df11])
+
+    # rename 1, select some
+    l = [create_files_csv_rename[2]]
+    helper(l, ['a'], {'b': 'a'}, [df11])
+
+    # rename none, select 1
+    l = [create_files_csv_rename[2]]
+    helper(l, ['a'], None, [df11])
+
+    # rename none, select all
+    l = [create_files_csv_rename[2]]
+    helper(l, ['a', 'c'], None, [df21])
+
+    # rename none, select all, filename col true
+    df21['filename'] = os.path.basename(l[0])
+    helper(l, ['a', 'c'], None, [df21], is_filename_col=True)
+
+
+def test_CombinerCSV_sql(create_files_csv):
+
+    def helper(fnames, is_col_common=False, is_filename_col=False, stream=False):
+        combiner = CombinerCSV(fname_list=fnames, all_strings=True, add_filename=is_filename_col)
+        table_name = 'test'
+        db_cnxn_string = cnxn_string.format('test-combined-adv')
+        if stream:
+            combiner.to_sql_stream(db_cnxn_string, table_name, is_col_common=is_col_common)
+        else:
+            combiner.to_sql(db_cnxn_string, table_name, is_col_common=is_col_common)
+        df = pd.read_sql("select * from test", db_cnxn_string)
+        df = df.set_index('index')
+        df.index.name = None
+        return df
+
+    # all columns present, to_sql
+    fname_list = create_files_csv
+    df_chk = create_files_df_clean_combine()
+    assert df_chk.equals(helper(fname_list))
+
+    # to sql stream
+    assert df_chk.equals(helper(fname_list, stream=True))
+
+    # columns mismatch, common columns, to_sql
+    fname_list = create_files_csv_colmismatch()
+    df_chk = create_files_df_colmismatch_combine(cfg_col_common=True)
+    assert helper(fname_list, is_col_common=True).shape[1] == df_chk.shape[1]
+
+
+def test_combinercsv_to_csv(create_files_csv_rename, create_out_files_csv_align_save):
+    fnames = create_files_csv_rename
+    df11, df12, df21, df22 = create_df_rename()
+
+    # error when separate files is False and no out_filename
+    with pytest.raises(ValueError):
+        c = CombinerCSV(fnames)
+        c.to_csv(separate_files=False)
+
+    # to_csv will call align_save
+    fnames = create_files_csv_rename[:2]
+    new_names = create_out_files_csv_align_save[:2]
+    c2 = CombinerCSV(fnames, columns_select=['a'],
+                     columns_rename={'b': 'a'}, add_filename=False)
+    c2.to_csv(output_dir=cfg_fname_base_out_dir, suffix="-align-save")
+    df_chks = [df11, df11]
+    for fname_out, df_chk in zip(new_names, df_chks):
+        dfc = pd.read_csv(fname_out)
+        assert dfc.equals(df_chk)
+
+    # to_csv will call combine_save
+    df_chk = pd.concat([df11, df11])
+    fnames = [create_files_csv_rename[0], create_files_csv_rename[-1]]
+
+    c3 = CombinerCSV(fnames, columns_select=['a'], columns_rename={'b': 'a'})
+
+    dfc = c3.combine()
+    dfc = dfc.drop(['filename'], 1)
+    assert dfc.equals(df_chk)
+
+    fname_out = cfg_fname_base_out_dir + '/test_save.csv'
+    with pytest.warns(UserWarning, match="File already exists"):
+        c3.to_csv(out_filename=fname_out, separate_files=False, streaming=True, overwrite=False)
+    c3.to_csv(out_filename=fname_out, separate_files=False, streaming=True)
+    dfc = pd.read_csv(fname_out)
+    dfc = dfc.drop(['filename'], 1)
+    assert dfc.equals(df_chk.reset_index(drop=True))
+
+
+def test_combinercsv_to_parquet(create_files_csv_rename, create_out_files_parquet_align_save):
+    fnames = create_files_csv_rename
+    df11, df12, df21, df22 = create_df_rename()
+
+    # error when separate files is False and no out_filename
+    with pytest.raises(ValueError):
+        c = CombinerCSV(fnames)
+        c.to_parquet(separate_files=False)
+
+    # to_csv will call align_save
+    fnames = create_files_csv_rename[:2]
+    new_names = create_out_files_parquet_align_save[:2]
+    c2 = CombinerCSV(fnames, columns_select=['a'],
+                     columns_rename={'b': 'a'}, add_filename=False)
+    c2.to_parquet(output_dir=cfg_fname_base_out_dir, suffix="-align-save")
+    df_chks = [df11, df11]
+    for fname_out, df_chk in zip(new_names, df_chks):
+        table = pq.read_table(fname_out)
+        dfc = table.to_pandas()
+        assert dfc.equals(df_chk)
+
+    # to_csv will call combine_save
+    df_chk = pd.concat([df11, df11])
+    fnames = [create_files_csv_rename[0], create_files_csv_rename[-1]]
+
+    c3 = CombinerCSV(fnames, columns_select=['a'], columns_rename={'b': 'a'})
+
+    fname_out = cfg_fname_base_out_dir + '/test_save.parquet'
+    c3.to_parquet(out_filename=fname_out, separate_files=False, streaming=True)
+    table = pq.read_table(fname_out)
+    dfc = table.to_pandas()
+    dfc = dfc.drop(['filename'], 1)
+    assert dfc.equals(df_chk)

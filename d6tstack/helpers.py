@@ -8,6 +8,7 @@ Module with several helper functions
 
 import os
 import collections
+import re
 
 def file_extensions_get(fname_list):
     """Returns file extensions in list
@@ -114,3 +115,11 @@ def check_valid_xls(fname_list):
     return True
 
 
+def compare_pandas_versions(version1, version2):
+    def cmp(a, b):
+        return (a > b) - (a < b)
+
+    def normalize(v):
+        return [int(x) for x in re.sub(r'(\.0+)*$','', v).split(".")]
+
+    return cmp(normalize(version1), normalize(version2))

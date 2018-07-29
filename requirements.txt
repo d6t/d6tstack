@@ -3,3 +3,6 @@ openpyxl
 xlrd
 pandas==0.22.0
 xlwt
+sqlalchemy
+boto==2.48.0
+ftputil==3.4

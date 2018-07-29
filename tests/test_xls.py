@@ -30,6 +30,9 @@ def test_xls_scan_sheets_single(create_files_xls_single, create_files_xlsx_singl
         assert xlsSniffer.all_have_idx(0)
         assert not xlsSniffer.all_have_idx(1)
 
+    with pytest.raises(ValueError) as e:
+        x = XLSSniffer([])
+
     helper(create_files_xls_single)
     helper(create_files_xlsx_single)
 
@@ -122,6 +125,10 @@ def test_XLStoBase():
     fname_out, is_skip = x._get_output_filename(cfg_fname_test1)
     assert is_skip
 
+    x = XLStoBase(output_dir=cfg_fname_base_out_dir2, if_exists='skip')
+    fname_out, is_skip = x._get_output_filename(cfg_fname_test1)
+    assert is_skip
+
     x = XLStoBase(output_dir=cfg_fname_base_out_dir2,if_exists='replace')
     fname_out, is_skip = x._get_output_filename(cfg_fname_test1)
     assert not is_skip
@@ -149,8 +156,9 @@ def test_XLStoBase():
 def test_XLStoCSVMultiFile(create_files_xls_single,create_files_xlsx_single):
 
     # global mode
-    def helper1(flist,select_mode,select_val):
-        x = XLStoCSVMultiFile(flist,output_dir=cfg_fname_base_out_dir,cfg_xls_sheets_sel_mode=select_mode,cfg_xls_sheets_sel=select_val,if_exists='replace')
+    def helper1(flist,select_mode,select_val, if_exists='replace'):
+        x = XLStoCSVMultiFile(flist,output_dir=cfg_fname_base_out_dir,cfg_xls_sheets_sel_mode=select_mode,
+                              cfg_xls_sheets_sel=select_val,if_exists=if_exists)
         fnames_out = x.convert_all()
         fnames_out_chk = [x._get_output_filename(fname+'-'+str(select_val)+'.csv')[0] for fname in flist]
         assert fnames_out==fnames_out_chk
@@ -159,10 +167,24 @@ def test_XLStoCSVMultiFile(create_files_xls_single,create_files_xlsx_single):
     helper1(create_files_xlsx_single,'name_global','Sheet1')
     helper1(create_files_xls_single,'name_global','Sheet1')
     helper1(create_files_xlsx_single,'idx_global',0)
+    # if_exists - skip
+    with pytest.warns(UserWarning):
+        helper1(create_files_xlsx_single, 'idx_global', 0, if_exists='skip')
+
+    # Without output dir
+    flist = create_files_xlsx_single
+    x = XLStoCSVMultiFile(flist, cfg_xls_sheets_sel_mode='idx_global',
+                          cfg_xls_sheets_sel=0, if_exists='replace')
+    fnames_out = x.convert_all()
+    # same directory
+    fnames_out_chk = [fname + '-' + str(0) + '.csv' for fname in flist]
+    assert fnames_out == fnames_out_chk
+    assert all([os.path.exists(fname) for fname in fnames_out_chk])
 
     # by file mode
-    def helper2(flist,select_mode,select_val_list):
-        x = XLStoCSVMultiFile(flist,output_dir=cfg_fname_base_out_dir,cfg_xls_sheets_sel_mode=select_mode,cfg_xls_sheets_sel=select_val_list,if_exists='replace')
+    def helper2(flist,select_mode,select_val_list, if_exists='replace'):
+        x = XLStoCSVMultiFile(flist,output_dir=cfg_fname_base_out_dir,cfg_xls_sheets_sel_mode=select_mode,
+                              cfg_xls_sheets_sel=select_val_list,if_exists=if_exists)
         fnames_out = x.convert_all()
         fnames_out_chk = [x._get_output_filename(fname+'-'+str(select_val_list[fname])+'.csv')[0] for fname in flist]
         assert fnames_out==fnames_out_chk
@@ -170,15 +192,24 @@ def test_XLStoCSVMultiFile(create_files_xls_single,create_files_xlsx_single):
 
     helper2(create_files_xlsx_single,'idx',dict(zip(create_files_xlsx_single,[0]*len(create_files_xlsx_single))))
     helper2(create_files_xlsx_single,'name',dict(zip(create_files_xlsx_single,['Sheet1']*len(create_files_xlsx_single))))
+    # if exists - skip
+    with pytest.warns(UserWarning):
+        helper2(create_files_xlsx_single,'name',
+                dict(zip(create_files_xlsx_single,['Sheet1']*len(create_files_xlsx_single))),
+                if_exists='skip')
 
     # global advanced
     dfc = pd.DataFrame({'a':range(10),'b':range(10)})
     fname = cfg_fname_dir_xls + cfg_fname_test_base
     dfc.to_excel(fname,startrow=1,startcol=1,index=False)
-    x = XLStoCSVMultiFile([fname],output_dir=cfg_fname_base_out_dir,cfg_xls_sheets_sel_mode='name_global',cfg_xls_sheets_sel='Sheet1',if_exists='replace')
+    x = XLStoCSVMultiFile([fname],output_dir=cfg_fname_base_out_dir,cfg_xls_sheets_sel_mode='name_global',
+                          cfg_xls_sheets_sel='Sheet1',if_exists='replace')
     fnames_out = x.convert_all(header_xls_range="B2:C2")
     dfr = pd.read_csv(fnames_out[0])
     assert dfr.equals(dfc)
+
+    with pytest.raises(ValueError) as e:
+        x = XLStoCSVMultiFile([], 'name', {})
 
 
 #************************************************************
@@ -191,6 +222,8 @@ def test_XLStoCSVMultiSheet(create_files_xlsx_multiple):
     assert 'Sheet1' in fname_out
     fname_out = x.convert_single('Sheet2')
     assert 'Sheet2' in fname_out
+    # path should be output dir given
+    assert os.path.dirname(fname_out) == cfg_fname_base_out_dir
 
     with pytest.raises(xlrd.XLRDError) as e:
         x.convert_single('Sheet3')
@@ -198,6 +231,10 @@ def test_XLStoCSVMultiSheet(create_files_xlsx_multiple):
     dfc = pd.DataFrame({'a':range(10),'b':range(10)})
     fname = cfg_fname_dir_xls + cfg_fname_test_base
     write_file_xls(dfc, fname, startrow=1, startcol=1)
+
+    x = XLStoCSVMultiSheet(fname, output_dir=cfg_fname_base_out_dir, if_exists='skip')
+    with pytest.warns(UserWarning):
+        fname_out = x.convert_single('Sheet1', header_xls_range="B2:C2")
 
     x = XLStoCSVMultiSheet(fname,output_dir=cfg_fname_base_out_dir,if_exists='replace')
     fname_out = x.convert_single('Sheet1',header_xls_range="B2:C2")
@@ -214,7 +251,22 @@ def test_XLStoCSVMultiSheet(create_files_xlsx_multiple):
     dfr = pd.read_csv(fnames_out[1])
     assert dfr.equals(dfc)
 
-    x = XLStoCSVMultiSheet(fname,sheet_names=['Sheet1'],output_dir=cfg_fname_base_out_dir,if_exists='replace')
+    x = XLStoCSVMultiSheet(fname,sheet_names=['Sheet1'],output_dir=cfg_fname_base_out_dir,
+                           if_exists='replace')
     fnames_out = x.convert_all(header_xls_range="B2:C2")
     assert len(fnames_out)==1
     assert 'Sheet1' in fnames_out[0]
+
+    # Single sheet Without output dir
+    x = XLStoCSVMultiSheet(create_files_xlsx_multiple[0], if_exists='replace')
+    fname_out = x.convert_single('Sheet1')
+    # same directory
+    fname_out_chk = create_files_xlsx_multiple[0]
+    assert os.path.dirname(fname_out) == os.path.dirname(fname_out_chk)
+
+    # Single sheet Without output dir
+    x = XLStoCSVMultiSheet(fname, if_exists='replace')
+    fnames_out = x.convert_all(header_xls_range="B2:C2")
+    # same directory
+    for fname_out in fnames_out:
+        assert os.path.dirname(fname_out) == os.path.dirname(fname)

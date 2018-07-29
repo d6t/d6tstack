@@ -3,6 +3,7 @@
 temp/
 fiddle*
 .pytest_cache/
+test-data/output/
 
 # add this manually
 test-data/
@@ -112,3 +113,5 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# pypi config file
+.pypirc

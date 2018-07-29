@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from openpyxl.utils import coordinate_from_string
+from d6tstack.helpers import compare_pandas_versions
 
 
 def read_excel_advanced(fname, remove_blank_cols=True, remove_blank_rows=True, collapse_header=True,
@@ -49,7 +50,10 @@ def read_excel_advanced(fname, remove_blank_cols=True, remove_blank_rows=True, c
         usecols = scol + ":" + ecol
         skiprows = srow - 1
 
-        df = pd.read_excel(fname, header=header, skiprows=skiprows, usecols=usecols, **kwds)
+        if compare_pandas_versions(pd.__version__, "0.20.3") > 0:
+            df = pd.read_excel(fname, header=header, skiprows=skiprows, usecols=usecols, **kwds)
+        else:
+            df = pd.read_excel(fname, header=header, skiprows=skiprows, parse_cols=usecols, **kwds)
     else:
         df = pd.read_excel(fname, **kwds)
 
