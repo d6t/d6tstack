@@ -266,9 +266,9 @@ class CombinerCSV(object):
             self.logger.send_log('combining files', 'ok')
 
         if is_col_common:
-            df_all = pd.concat(dfl_all, join='inner')
+            df_all = pd.concat(dfl_all, join='inner', sort=False)
         else:
-            df_all = pd.concat(dfl_all)
+            df_all = pd.concat(dfl_all, sort=False)
 
         self.df_all = df_all
 
