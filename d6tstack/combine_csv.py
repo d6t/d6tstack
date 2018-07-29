@@ -21,27 +21,27 @@ def sniff_settings_csv(fname_list):
     return csv_sniff
 
 
-def apply_select_rename(dfg, cfg_col_sel, cfg_col_rename):
+def apply_select_rename(dfg, columns_select, columns_rename):
 
-    if cfg_col_rename:
+    if columns_rename:
         # check no naming conflicts
-        cfg_col_sel2 = [cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in dfg.columns.tolist()]
-        df_rename_count = collections.Counter(cfg_col_sel2)
+        columns_select2 = [columns_rename[k] if k in columns_rename.keys() else k for k in dfg.columns.tolist()]
+        df_rename_count = collections.Counter(columns_select2)
         if df_rename_count and max(df_rename_count.values()) > 1:  # would the rename create naming conflict?
             warnings.warn('Renaming conflict: {}'.format([(k,v) for k,v in df_rename_count.items() if v>1]), UserWarning)
             while df_rename_count and max(df_rename_count.values())>1:
                 # remove key value pair causing conflict
                 conflicting_keys = [i for i,j in df_rename_count.items() if j>1]
-                cfg_col_rename = {k:v for k,v in cfg_col_rename.items() if k in conflicting_keys}
-                cfg_col_sel2 = [cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in dfg.columns.tolist()]
-                df_rename_count = collections.Counter(cfg_col_sel2)
-        dfg = dfg.rename(columns=cfg_col_rename)
-    if cfg_col_sel:
-        if cfg_col_rename:
-            cfg_col_sel2 = list(dict.fromkeys([cfg_col_rename[k] if k in cfg_col_rename.keys() else k for k in cfg_col_sel])) # set of columns after rename
+                columns_rename = {k:v for k,v in columns_rename.items() if k in conflicting_keys}
+                columns_select2 = [columns_rename[k] if k in columns_rename.keys() else k for k in dfg.columns.tolist()]
+                df_rename_count = collections.Counter(columns_select2)
+        dfg = dfg.rename(columns=columns_rename)
+    if columns_select:
+        if columns_rename:
+            columns_select2 = list(dict.fromkeys([columns_rename[k] if k in columns_rename.keys() else k for k in columns_select])) # set of columns after rename
         else:
-            cfg_col_sel2 = cfg_col_sel
-        dfg = dfg.reindex(columns=cfg_col_sel2)
+            columns_select2 = columns_select
+        dfg = dfg.reindex(columns=columns_select2)
 
     return dfg
 
@@ -76,15 +76,15 @@ class CombinerCSV(object):
         header_row (int): header row, see pandas.read_csv()
         skiprows (int): rows to skip at top of file, see pandas.read_csv()
         nrows_preview (boolean): number of rows in preview
-        cfg_filename_col (bool): add filename column to output data frame. If `False`, will not add column.
-        cfg_col_sel (list): list of column names to keep
-        cfg_col_rename (dict): dict of columns to rename `{'name_old':'name_new'}
+        add_filename (bool): add filename column to output data frame. If `False`, will not add column.
+        columns_select (list): list of column names to keep
+        columns_rename (dict): dict of columns to rename `{'name_old':'name_new'}
         logger (object): logger object with send_log()
 
     """
 
     def __init__(self, fname_list, sep=',', has_header = True, all_strings=False, nrows_preview=3, read_csv_params=None,
-                 cfg_filename_col=True, cfg_col_sel=None, cfg_col_rename=None, logger=None):
+                 add_filename=True, columns_select=None, columns_rename=None, logger=None):
         if not fname_list:
             raise ValueError("Filename list should not be empty")
         self.fname_list = fname_list
@@ -97,18 +97,18 @@ class CombinerCSV(object):
         self.read_csv_params['sep'] = sep
         self.logger = logger
         self.col_preview = None
-        self.cfg_filename_col = cfg_filename_col
-        self.cfg_col_sel = cfg_col_sel
-        self.cfg_col_rename = cfg_col_rename
+        self.add_filename = add_filename
+        self.columns_select = columns_select
+        self.columns_rename = columns_rename
 
-        if not self.cfg_col_sel:
-            self.cfg_col_sel = []
+        if not self.columns_select:
+            self.columns_select = []
         else:
-            if max(collections.Counter(cfg_col_sel).values())>1:
-                raise ValueError('Duplicate entries in cfg_col_sel')
+            if max(collections.Counter(columns_select).values())>1:
+                raise ValueError('Duplicate entries in columns_select')
 
-        if not self.cfg_col_rename:
-            self.cfg_col_rename = {}
+        if not self.columns_rename:
+            self.columns_rename = {}
 
     def read_csv(self, fname, is_preview=False, chunksize=None):
         cfg_dype = str if self.all_strings else None
@@ -116,20 +116,20 @@ class CombinerCSV(object):
         return pd.read_csv(fname, dtype=cfg_dype, nrows=cfg_nrows, chunksize=chunksize,
                            **self.read_csv_params)
 
-    def read_csv_all(self, msg=None, is_preview=False, chunksize=None, cfg_col_sel=None,
-                     cfg_col_rename=None):
+    def read_csv_all(self, msg=None, is_preview=False, chunksize=None, columns_select=None,
+                     columns_rename=None):
         dfl_all = []
-        if not cfg_col_sel:
-            cfg_col_sel = []
-        if not cfg_col_rename:
-            cfg_col_rename = {}
+        if not columns_select:
+            columns_select = []
+        if not columns_rename:
+            columns_rename = {}
         for fname in self.fname_list:
             if self.logger and msg:
                 self.logger.send_log(msg + ' ' + ntpath.basename(fname), 'ok')
             df = self.read_csv(fname, is_preview=is_preview, chunksize=chunksize)
-            if cfg_col_sel or cfg_col_rename:
-                df = apply_select_rename(df, cfg_col_sel, cfg_col_rename)
-            if self.cfg_filename_col:
+            if columns_select or columns_rename:
+                df = apply_select_rename(df, columns_select, columns_rename)
+            if self.add_filename:
                 df['filename'] = ntpath.basename(fname)
             dfl_all.append(df)
 
@@ -155,7 +155,7 @@ class CombinerCSV(object):
         dfl_all = self.read_csv_all(msg='scanning colums of', is_preview=True)
 
         dfl_all_col = [df.columns.tolist() for df in dfl_all]
-        if self.cfg_filename_col:
+        if self.add_filename:
             [df.remove('filename') for df in dfl_all_col]
         col_files = dict(zip(self.fname_list, dfl_all_col))
         col_common = list_common(list(col_files.values()))
@@ -259,8 +259,8 @@ class CombinerCSV(object):
 
         """
 
-        dfl_all = self.read_csv_all('reading full file', is_preview=is_preview, cfg_col_sel=self.cfg_col_sel,
-                                    cfg_col_rename=self.cfg_col_rename)
+        dfl_all = self.read_csv_all('reading full file', is_preview=is_preview, columns_select=self.columns_select,
+                                    columns_rename=self.columns_rename)
 
         if self.logger:
             self.logger.send_log('combining files', 'ok')
@@ -302,24 +302,24 @@ class CombinerCSV(object):
             os.makedirs(output_dir)
 
     def get_columns_for_save(self, is_col_common=False):
-        if self.cfg_col_sel:
+        if self.columns_select:
             # set of columns after rename
-            cfg_col_sel2 = list(collections.OrderedDict.fromkeys([self.cfg_col_rename[k]
-                                                                  if k in self.cfg_col_rename.keys() else k
-                                                                  for k in self.cfg_col_sel]))
+            columns_select2 = list(collections.OrderedDict.fromkeys([self.columns_rename[k]
+                                                                  if k in self.columns_rename.keys() else k
+                                                                  for k in self.columns_select]))
 
-            return cfg_col_sel2
+            return columns_select2
         else:
             self._preview_available()
             import copy
             columns = copy.deepcopy(self.col_preview['columns_common'] if is_col_common
                                     else self.col_preview['columns_all'])
-            if self.cfg_filename_col:
+            if self.add_filename:
                 columns += ['filename', ]
             return columns
 
     def save_files(self, columns, out_filename=None, output_dir=None, suffix='-matched', overwrite=False, chunksize=1e10,
-                   cfg_col_sel2=None, parquet_output=False):
+                   columns_select2=None, parquet_output=False):
         if parquet_output:
             import pyarrow as pa
             import pyarrow.parquet as pq
@@ -350,9 +350,9 @@ class CombinerCSV(object):
                         df_all_header.to_csv(fhandle, header=True, index=False)
                     first = True
                 for df_chunk in self.read_csv(fname, chunksize=chunksize):
-                    if cfg_col_sel2 or self.cfg_col_rename:
-                        df_chunk = apply_select_rename(df_chunk, cfg_col_sel2, self.cfg_col_rename)
-                    if self.cfg_filename_col:
+                    if columns_select2 or self.columns_rename:
+                        df_chunk = apply_select_rename(df_chunk, columns_select2, self.columns_rename)
+                    if self.add_filename:
                         df_chunk['filename'] = ntpath.basename(new_name)
                     if parquet_output:
                         table = pa.Table.from_pandas(df_chunk)
@@ -385,14 +385,14 @@ class CombinerCSV(object):
             is_col_common (bool): Use common columns else all columns, default False, optional
 
         """
-        cfg_col_sel2 = self.get_columns_for_save(is_col_common=is_col_common)
+        columns_select2 = self.get_columns_for_save(is_col_common=is_col_common)
 
-        columns = cfg_col_sel2
-        if self.cfg_filename_col and self.cfg_col_sel:
+        columns = columns_select2
+        if self.add_filename and self.columns_select:
             columns += ['filename', ]
 
         return self.save_files(columns, output_dir=output_dir, suffix=suffix, overwrite=overwrite,
-                               chunksize=chunksize, cfg_col_sel2=columns, parquet_output=parquet_output)
+                               chunksize=chunksize, columns_select2=columns, parquet_output=parquet_output)
 
     def combine_save(self, fname_out, chunksize=1e10, is_col_common=False, parquet_output=False, overwrite=True):
         """
@@ -403,15 +403,15 @@ class CombinerCSV(object):
             fname_out (str): filename
 
         """
-        cfg_col_sel2 = self.get_columns_for_save(is_col_common=is_col_common)
+        columns_select2 = self.get_columns_for_save(is_col_common=is_col_common)
 
-        columns = cfg_col_sel2
-        if self.cfg_filename_col and self.cfg_col_sel:
+        columns = columns_select2
+        if self.add_filename and self.columns_select:
             columns += ['filename', ]
 
         self.create_output_dir(os.path.dirname(fname_out))
 
-        return self.save_files(columns, out_filename=fname_out, chunksize=chunksize, cfg_col_sel2=cfg_col_sel2,
+        return self.save_files(columns, out_filename=fname_out, chunksize=chunksize, columns_select2=columns_select2,
                                overwrite=overwrite, parquet_output=parquet_output)
 
     def to_sql(self, cnxn_string, table_name, is_col_common=False, is_preview=False,
@@ -449,18 +449,18 @@ class CombinerCSV(object):
                 chunksize (int): Number of lines to be used to extract from file each time.
                 sql_chunksize (int): Number of rows to be inserted to table at one time.
         """
-        cfg_col_sel = self.cfg_col_sel
-        if not cfg_col_sel:
-            cfg_col_sel = self.get_columns_for_save(is_col_common=is_col_common)
+        columns_select = self.columns_select
+        if not columns_select:
+            columns_select = self.get_columns_for_save(is_col_common=is_col_common)
         first_time = True
         connection = create_sql_connection(cnxn_string)
         for fname in self.fname_list:
             if self.logger:
                 self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
             for df_chunk in self.read_csv(fname, chunksize=chunksize):
-                if cfg_col_sel or self.cfg_col_rename:
-                    df_chunk = apply_select_rename(df_chunk, cfg_col_sel, self.cfg_col_rename)
-                if self.cfg_filename_col:
+                if columns_select or self.columns_rename:
+                    df_chunk = apply_select_rename(df_chunk, columns_select, self.columns_rename)
+                if self.add_filename:
                     df_chunk['filename'] = ntpath.basename(fname)
                 if first_time:
                     if_exists = if_exists
