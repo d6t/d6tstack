@@ -56,7 +56,8 @@ If you cannot install from github, use the latest published version `pip install
 
 ## Documentation
 
-*  [Stacking examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb) - Demonstrates combiner usage
+*  [CSV examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb) - Quickly load any type of CSV files
+*  [Excel examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-excel.ipynb) - Quickly extract from Excel to CSV 
 *  [Dask Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-dask.ipynb) - How to use d6tstack to solve Dask input file problems
 *  [Pyspark Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-pyspark.ipynb) - How to use d6tstack to solve pyspark input file problems
 *  [Official docs](http://d6tstack.readthedocs.io/en/latest/py-modindex.html) - Detailed documentation for modules, classes, functions
