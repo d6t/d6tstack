@@ -559,7 +559,7 @@ def test_CombinerCSV_align_save_advanced(create_files_csv_rename, create_out_fil
         else:
             c2 = CombinerCSV(fnames, add_filename=is_filename_col)
             
-        c2.align_save(output_dir=cfg_fname_base_out_dir, suffix="-align-save")
+        c2.align_save(output_dir=cfg_fname_base_out_dir, prefix="-align-save")
         for fname_out, df_chk in zip(new_fnames, df_chks):
             dfc = pd.read_csv(fname_out)
             assert dfc.equals(df_chk)
@@ -684,7 +684,7 @@ def test_combinercsv_to_csv(create_files_csv_rename, create_out_files_csv_align_
     new_names = create_out_files_csv_align_save[:2]
     c2 = CombinerCSV(fnames, columns_select=['a'],
                      columns_rename={'b': 'a'}, add_filename=False)
-    c2.to_csv(output_dir=cfg_fname_base_out_dir, suffix="-align-save")
+    c2.to_csv(output_dir=cfg_fname_base_out_dir, prefix="-align-save")
     df_chks = [df11, df11]
     for fname_out, df_chk in zip(new_names, df_chks):
         dfc = pd.read_csv(fname_out)
@@ -723,7 +723,7 @@ def test_combinercsv_to_parquet(create_files_csv_rename, create_out_files_parque
     new_names = create_out_files_parquet_align_save[:2]
     c2 = CombinerCSV(fnames, columns_select=['a'],
                      columns_rename={'b': 'a'}, add_filename=False)
-    c2.to_parquet(output_dir=cfg_fname_base_out_dir, suffix="-align-save")
+    c2.to_parquet(output_dir=cfg_fname_base_out_dir, prefix="-align-save")
     df_chks = [df11, df11]
     for fname_out, df_chk in zip(new_names, df_chks):
         table = pq.read_table(fname_out)

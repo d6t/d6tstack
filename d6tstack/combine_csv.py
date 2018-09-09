@@ -74,7 +74,7 @@ class CombinerCSV(object):
         all_strings (boolean): read all values as strings (faster) 
         header_row (int): header row, see pandas.read_csv()
         skiprows (int): rows to skip at top of file, see pandas.read_csv()
-        nrows_preview (boolean): number of rows in preview
+        nrows_preview (int): number of rows in preview
         add_filename (bool): add filename column to output data frame. If `False`, will not add column.
         columns_select (list): list of column names to keep
         columns_rename (dict): dict of columns to rename `{'name_old':'name_new'}
@@ -117,7 +117,7 @@ class CombinerCSV(object):
         df = pd.read_csv(fname, dtype=cfg_dype, nrows=cfg_nrows, chunksize=chunksize,
                            **self.read_csv_params)
         if self.apply_after_read:
-            df = apply_after_read(df)
+            df = self.apply_after_read(df)
         return df
 
     def read_csv_all(self, msg=None, is_preview=False, chunksize=None, columns_select=None,
@@ -291,10 +291,10 @@ class CombinerCSV(object):
         df_all_preview.to_csv(fname_out, index=False)
         return True
 
-    def get_output_filename(self, fname, suffix, parquet_output=False):
+    def get_output_filename(self, fname, prefix, parquet_output=False):
         basename = os.path.basename(fname)
         name_with_ext = os.path.splitext(basename)
-        new_name = name_with_ext[0] + suffix
+        new_name = prefix + name_with_ext[0] 
         if parquet_output:
             new_name += ".parquet"
         elif len(name_with_ext) == 2:
@@ -322,7 +322,7 @@ class CombinerCSV(object):
                 columns += ['filename', ]
             return columns
 
-    def save_files(self, columns, out_filename=None, output_dir=None, suffix='-matched', overwrite=False, chunksize=1e10,
+    def save_files(self, columns, out_filename=None, output_dir=None, prefix='d6tstack-', overwrite=False, chunksize=1e10,
                    columns_select2=None, parquet_output=False):
         if parquet_output:
             import pyarrow as pa
@@ -340,7 +340,7 @@ class CombinerCSV(object):
             if self.logger:
                 self.logger.send_log('processing ' + ntpath.basename(fname), 'ok')
 
-            new_name = self.get_output_filename(fname, suffix, parquet_output=parquet_output)
+            new_name = self.get_output_filename(fname, prefix, parquet_output=parquet_output)
             if output_dir:
                 fname_out = os.path.join(output_dir, new_name)
             else:
@@ -376,7 +376,7 @@ class CombinerCSV(object):
 
         return True
 
-    def align_save(self, output_dir=None, suffix='-matched', overwrite=False, chunksize=1e10,
+    def align_save(self, output_dir=None, prefix='d6tstack-', overwrite=False, chunksize=1e10,
                    is_col_common=False, parquet_output=False):
         """
 
@@ -384,7 +384,7 @@ class CombinerCSV(object):
 
         Args:
             output_dir (str): output directory to save, default input file directory, optional
-            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
+            prefix (str): prefix to add to end of screen to input filename to create output file name, optional
             overwrite (bool): overwrite file if exists, default True, optional
             is_col_common (bool): Use common columns else all columns, default False, optional
 
@@ -395,7 +395,7 @@ class CombinerCSV(object):
         if self.add_filename and self.columns_select:
             columns += ['filename', ]
 
-        return self.save_files(columns, output_dir=output_dir, suffix=suffix, overwrite=overwrite,
+        return self.save_files(columns, output_dir=output_dir, prefix=prefix, overwrite=overwrite,
                                chunksize=chunksize, columns_select2=columns, parquet_output=parquet_output)
 
     def combine_save(self, fname_out, chunksize=1e10, is_col_common=False, parquet_output=False, overwrite=True):
@@ -476,11 +476,11 @@ class CombinerCSV(object):
         connection.close()
         return True
 
-    def convert_to_csv_parquet(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
+    def convert_to_csv_parquet(self, out_filename=None, separate_files=True, output_dir=None, prefix='d6tstack-',
                                is_col_common=False, overwrite=False, streaming=True, chunksize=1e10,
                                parquet_output=False):
         if separate_files:
-            self.align_save(output_dir=output_dir, suffix=suffix, overwrite=overwrite, is_col_common=is_col_common,
+            self.align_save(output_dir=output_dir, prefix=prefix, overwrite=overwrite, is_col_common=is_col_common,
                             chunksize=chunksize, parquet_output=parquet_output)
         elif streaming and out_filename:
             self.combine_save(out_filename, chunksize=chunksize, parquet_output=parquet_output, overwrite=overwrite)
@@ -497,7 +497,7 @@ class CombinerCSV(object):
         else:
             raise ValueError("out_filename is required")
 
-    def to_csv(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
+    def to_csv(self, out_filename=None, separate_files=True, output_dir=None, prefix='d6tstack-',
                is_col_common=False, overwrite=False, streaming=False, chunksize=1e10):
         """
 
@@ -507,17 +507,17 @@ class CombinerCSV(object):
             out_filename (str): when combining this is mandatory
             separate_files (bool): To decide whether combine files or save separately, default True
             output_dir (str): output directory to save for separate files, default input file directory, optional
-            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
+            prefix (str): prepend to each input filename, optional
             overwrite (bool): overwrite file if exists, default True, optional
             chunksize (int): chunksize to be used for writing large files in chunks
 
         """
 
         self.convert_to_csv_parquet(out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
-                                    is_col_common=is_col_common, suffix=suffix, overwrite=overwrite,
+                                    is_col_common=is_col_common, prefix=prefix, overwrite=overwrite,
                                     streaming=streaming, chunksize=chunksize)
 
-    def to_parquet(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
+    def to_parquet(self, out_filename=None, separate_files=True, output_dir=None, prefix='d6tstack-',
                    is_col_common=False, overwrite=False, streaming=False, chunksize=1e10):
         """
 
@@ -527,11 +527,11 @@ class CombinerCSV(object):
             out_filename (str): when combining this is mandatory
             separate_files (bool): convert to csv after aligning columns (without combining)
             output_dir (str): output directory to save for separate files, default input file directory, optional
-            suffix (str): suffix to add to end of screen to input filename to create output file name, optional
+            prefix (str): prefix to add to end of screen to input filename to create output file name, optional
             overwrite (bool): overwrite file if exists, default True, optional
             chunksize (int): chunksize to be used for writing large files in chunks
 
         """
         self.convert_to_csv_parquet(out_filename=out_filename, separate_files=separate_files, output_dir=output_dir,
-                                    suffix=suffix, overwrite=overwrite, streaming=streaming, chunksize=chunksize,
+                                    prefix=prefix, overwrite=overwrite, streaming=streaming, chunksize=chunksize,
                                     is_col_common=is_col_common, parquet_output=True)
