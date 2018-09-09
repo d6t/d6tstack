@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import warnings
-from sqlalchemy.engine import create_engine
 
 from .sniffer import CSVSnifferList
 from .helpers_ui import *
@@ -47,6 +46,7 @@ def apply_select_rename(dfg, columns_select, columns_rename):
 
 
 def create_sql_connection(cnxn_string):
+    from sqlalchemy.engine import create_engine
     engine = create_engine(cnxn_string)
     connection = engine.connect()
     connection.dialect.supports_multivalues_insert = True
@@ -78,12 +78,13 @@ class CombinerCSV(object):
         add_filename (bool): add filename column to output data frame. If `False`, will not add column.
         columns_select (list): list of column names to keep
         columns_rename (dict): dict of columns to rename `{'name_old':'name_new'}
+        apply_after_read (function): function to apply after reading each file. needs to return a dataframe
         logger (object): logger object with send_log()
 
     """
 
     def __init__(self, fname_list, sep=',', has_header = True, all_strings=False, nrows_preview=3, read_csv_params=None,
-                 add_filename=True, columns_select=None, columns_rename=None, logger=None):
+                 add_filename=True, columns_select=None, columns_rename=None, apply_after_read=None, logger=None):
         if not fname_list:
             raise ValueError("Filename list should not be empty")
         self.fname_list = fname_list
@@ -99,6 +100,7 @@ class CombinerCSV(object):
         self.add_filename = add_filename
         self.columns_select = columns_select
         self.columns_rename = columns_rename
+        self.apply_after_read = apply_after_read
 
         if not self.columns_select:
             self.columns_select = []
@@ -112,8 +114,11 @@ class CombinerCSV(object):
     def read_csv(self, fname, is_preview=False, chunksize=None):
         cfg_dype = str if self.all_strings else None
         cfg_nrows = self.nrows_preview if is_preview else None
-        return pd.read_csv(fname, dtype=cfg_dype, nrows=cfg_nrows, chunksize=chunksize,
+        df = pd.read_csv(fname, dtype=cfg_dype, nrows=cfg_nrows, chunksize=chunksize,
                            **self.read_csv_params)
+        if self.apply_after_read:
+            df = apply_after_read(df)
+        return df
 
     def read_csv_all(self, msg=None, is_preview=False, chunksize=None, columns_select=None,
                      columns_rename=None):
@@ -490,7 +495,7 @@ class CombinerCSV(object):
                 fhandle = open(out_filename, 'w')
                 df.to_csv(fhandle, header=True, index=False)
         else:
-            raise ValueError("out_filename is mandatory when streaming")
+            raise ValueError("out_filename is required")
 
     def to_csv(self, out_filename=None, separate_files=True, output_dir=None, suffix='-matched',
                is_col_common=False, overwrite=False, streaming=False, chunksize=1e10):
