@@ -23,6 +23,7 @@ Notes:
 from d6tstack.combine_csv import *
 from d6tstack.sniffer import CSVSniffer
 
+import math
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -272,7 +273,7 @@ def test_file_extensions_valid():
 # scan header
 #************************************************************
 #************************************************************
-def test_csv_header(create_files_csv, create_files_csv_colmismatch, create_files_csv_colreorder):
+def test_csv_sniff(create_files_csv, create_files_csv_colmismatch, create_files_csv_colreorder):
 
     with pytest.raises(ValueError) as e:
         c = CombinerCSV([])
@@ -305,3 +306,58 @@ def test_csv_header(create_files_csv, create_files_csv_colmismatch, create_files
     assert combiner.sniff_results['df_columns_order']['profit'].values.tolist() == [3, 3, 2]
 
 
+def test_csv_selectrename(create_files_csv, create_files_csv_colmismatch):
+
+    # rename
+    df = CombinerCSV(fname_list=create_files_csv).preview_rename()
+    assert df.empty
+    df = CombinerCSV(fname_list=create_files_csv, columns_rename={'notthere':'nan'}).preview_rename()
+    assert df.empty
+
+    df = CombinerCSV(fname_list=create_files_csv, columns_rename={'cost':'cost2'}).preview_rename()
+    assert df.columns.tolist()==['cost']
+    assert df['cost'].unique().tolist()==['cost2']
+
+    df = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_rename={'profit2':'profit3'}).preview_rename()
+    assert df.columns.tolist()==['profit2']
+    assert df['profit2'].unique().tolist()==[np.nan, 'profit3']
+
+    # select
+    l = CombinerCSV(fname_list=create_files_csv).preview_select()
+    assert l == ['date', 'sales', 'cost', 'profit']
+    l2 = CombinerCSV(fname_list=create_files_csv, columns_select_common=True).preview_select()
+    assert l2==l
+    l = CombinerCSV(fname_list=create_files_csv, columns_select=['date', 'sales', 'cost']).preview_select()
+    assert l == ['date', 'sales', 'cost']
+
+    l = CombinerCSV(fname_list=create_files_csv_colmismatch).preview_select()
+    assert l == ['date', 'sales', 'cost', 'profit', 'profit2']
+    l = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select_common=True).preview_select()
+    assert l == ['date', 'sales', 'cost', 'profit']
+
+    # rename+select
+    l = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select=['date','profit2'], columns_rename={'profit2':'profit3'}).preview_select()
+    assert l==['date', 'profit3']
+    l = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select=['date','profit3'], columns_rename={'profit2':'profit3'}).preview_select()
+    assert l==['date', 'profit3']
+
+def test_to_pandas(create_files_csv, create_files_csv_colmismatch, create_files_csv_colreorder):
+    df = CombinerCSV(fname_list=create_files_csv).to_pandas()
+    assert df.shape == (30, 6)
+    
+    df = CombinerCSV(fname_list=create_files_csv_colmismatch).to_pandas()
+    assert df.shape == (30, 6+1)
+    assert df['profit2'].isnull().unique().tolist() == [True, False]
+    df = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select_common=True).to_pandas()
+    assert df.shape == (30, 6)
+    assert 'profit2' not in df.columns
+
+    # rename+select
+    df = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select=['date','profit2'], columns_rename={'profit2':'profit3'}, add_filename=False).to_pandas()
+    assert df.shape == (30, 2)
+    assert 'profit3' in df.columns and not 'profit2' in df.columns
+    df = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select=['date','profit3'], columns_rename={'profit2':'profit3'}, add_filename=False).to_pandas()
+    assert df.shape == (30, 2)
+    assert 'profit3' in df.columns and not 'profit2' in df.columns
+
+    

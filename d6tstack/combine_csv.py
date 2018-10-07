@@ -55,7 +55,7 @@ class CombinerCSV(object):
         if columns_select and columns_select_common:
             warnings.warn('columns_select will override columns_select_common, pick either one')
         self.columns_rename = columns_rename
-        self._columns_select_dict = None
+        self._columns_reindex = None
         self._columns_rename_dict = None
         self.apply_after_read = apply_after_read
         self.chunksize = chunksize
@@ -71,15 +71,19 @@ class CombinerCSV(object):
         if not self.columns_rename:
             self.columns_rename = {}
 
-    def _read_csv_yield(self, fname, chunksize):
-        dfs = pd.read_csv(fname, **self.read_csv_params, chunksize=chunksize)
+    def _read_csv_yield(self, fname):
+        dfs = pd.read_csv(fname, **self.read_csv_params, chunksize=self.chunksize)
         for dfc in dfs:
             if self.columns_rename and self._columns_rename_dict[fname]:
                 dfc = dfc.rename(columns=self._columns_rename_dict[fname])
 
-            dfc = dfc.reindex(self._columns_select_dict[fname])
+            if dfc.columns.tolist != self._columns_reindex:
+                dfc = dfc.reindex(columns=self._columns_reindex)
             if self.apply_after_read:
                 dfc = self.apply_after_read(dfc)
+            if self.add_filename:
+                dfc['filepath'] = fname
+                dfc['filename'] = ntpath.basename(fname)
             yield dfc
 
     def sniff_columns(self):
@@ -211,7 +215,6 @@ class CombinerCSV(object):
 
         for fname in self.fname_list:
             columns_rename = self.columns_rename.copy()
-            columns_select = self.columns_select.copy()
             if self.columns_rename:
                 # check no naming conflicts
                 columns_select2 = [columns_rename[k] if k in columns_rename.keys() else k for k in self.sniff_results['files_columns'][fname]]
@@ -230,22 +233,21 @@ class CombinerCSV(object):
                 # store rename by file. keep only renames for columns actually present in file
                 self._columns_rename_dict[fname] = dict((k,v) for k,v in columns_rename.items() if k in k in self.sniff_results['files_columns'][fname])
 
-            if self.columns_select:
-                if columns_rename:
-                    columns_select2 = list(dict.fromkeys([columns_rename[k] if k in columns_rename.keys() else k for k in
-                                                          self.columns_select]))  # set of columns after rename
-                else:
-                    columns_select2 = self.columns_select.copy()
-                # store select by file
-                self._columns_select_dict[fname] = columns_select2.copy()
+        if self.columns_select:
+            columns_select2 = self.columns_select.copy()
+        else:
+            if self.columns_select_common:
+                columns_select2 = self.sniff_results['columns_common'].copy()
             else:
-                if self.columns_select_common:
-                    self._columns_select_dict[fname] = self.sniff_results['columns_common']
-                else:
-                    self._columns_select_dict[fname] = self.sniff_results['columns_all']
+                columns_select2 = self.sniff_results['columns_all'].copy()
+
+        if columns_rename:
+            columns_select2 = list(dict.fromkeys([columns_rename[k] if k in columns_rename.keys() else k for k in columns_select2]))  # set of columns after rename
+        # store select by file
+        self._columns_reindex = columns_select2
 
     def _columns_reindex_available(self):
-        if not self._columns_rename_dict or not self._columns_select_dict:
+        if not self._columns_rename_dict or not self._columns_reindex:
             self._columns_reindex_prep()
 
     def preview_rename(self):
@@ -255,16 +257,11 @@ class CombinerCSV(object):
 
     def preview_select(self):
         self._columns_reindex_available()
-        df = pd.DataFrame(self._columns_select_dict).T
-        return df
+        return self._columns_reindex
 
     def to_pandas(self):
         self._columns_reindex_available()
-        dfl = []
-        for fname in self.fname_list:
-            dfg = self._read_csv_yield(fname, chunksize=None)[0]
-            if self.add_filename:
-                dfg['filepath'] = fname
-                dfg['filename'] = ntpath.basename(fname)
-                dfl.append(dfg)
-        return pd.concat(dfl)
+        df = [[dfc for dfc in self._read_csv_yield(fname)] for fname in self.fname_list]
+        import itertools
+        df = pd.concat(itertools.chain.from_iterable(df), sort=False, copy=False)
+        return df
