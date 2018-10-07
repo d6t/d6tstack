@@ -188,6 +188,17 @@ class CSVSnifferList(object):
         # todo: propagate status of individual sniffers. instead of raising exception pass back status to get user input
 
 
+def sniff_settings_csv(fname_list):
+    sniff = CSVSnifferList(fname_list)
+    csv_sniff = {}
+    csv_sniff['delim'] = sniff.get_delim()
+    csv_sniff['skiprows'] = sniff.count_skiprows()
+    csv_sniff['has_header'] = sniff.has_header()
+    csv_sniff['header'] = 0 if sniff.has_header() else None
+    return csv_sniff
+
+
+
 #******************************************************************
 # xls
 #******************************************************************
