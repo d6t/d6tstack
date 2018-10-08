@@ -15,17 +15,4 @@ fname_list=glob.glob('test-data/input/test-data-input-csv-colmismatch-*.csv')
 
 importlib.reload(d6tstack.combine_csv)
 combiner = d6tstack.combine_csv.CombinerCSV(fname_list)
-combiner.preview_select()
-df=combiner.to_pandas()
-df.shape
-combiner = d6tstack.combine_csv.CombinerCSV(fname_list, columns_select=['date','profit2'], columns_rename={'profit2':'profit3'})
-combiner.preview_select()
-combiner = d6tstack.combine_csv.CombinerCSV(fname_list, columns_select=['date','profit3'], columns_rename={'profit2':'profit3'})
-combiner.preview_select()
-combiner.to_pandas()
-
-'''
-todo:
-write tests
-
-'''
+[combiner.get_filepath_out(fname, '.csv') for fname in fname_list]

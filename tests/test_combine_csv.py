@@ -360,4 +360,30 @@ def test_to_pandas(create_files_csv, create_files_csv_colmismatch, create_files_
     assert df.shape == (30, 2)
     assert 'profit3' in df.columns and not 'profit2' in df.columns
 
-    
+def test_combinepreview(create_files_csv_colmismatch):
+    df = CombinerCSV(fname_list=create_files_csv_colmismatch).combine_preview()
+    assert df.shape == (9, 6+1)
+    assert df.dtypes.tolist() == [np.dtype('O'), np.dtype('int64'), np.dtype('int64'), np.dtype('int64'), np.dtype('float64'), np.dtype('O'), np.dtype('O')]
+
+    def apply(dfg):
+        dfg['date'] = pd.to_datetime(dfg['date'], format='%Y-%m-%d')
+        return dfg
+
+    df = CombinerCSV(fname_list=create_files_csv_colmismatch, apply_after_read=apply).combine_preview()
+    assert df.shape == (9, 6+1)
+    assert df.dtypes.tolist() == [np.dtype('<M8[ns]'), np.dtype('int64'), np.dtype('int64'), np.dtype('int64'), np.dtype('float64'), np.dtype('O'), np.dtype('O')]
+
+
+def test_tocsv(create_files_csv_colmismatch):
+    fname = 'test-data/output/combined.csv'
+    fnameout = CombinerCSV(fname_list=create_files_csv_colmismatch).to_csv(combined=True, filename=fname)
+    assert fname == fnameout
+    df = pd.read_csv(fname)
+    assert df.shape == (30, 4+1+2)
+    assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+
+    fnamesout = CombinerCSV(fname_list=create_files_csv_colmismatch, output_dir='test-data/output').to_csv(combined=False)
+    for fname in fnamesout:
+        df = pd.read_csv(fname)
+        assert df.shape == (10, 4+1+2)
+        assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
