@@ -283,7 +283,7 @@ class CombinerCSV(object):
         return df
 
     def _combine_preview_available(self):
-        if not self.df_combine_preview:
+        if self.df_combine_preview is None:
             self.combine_preview()
 
     def to_pandas(self):
@@ -345,6 +345,8 @@ class CombinerCSV(object):
         return filename
 
     def to_parquet_align(self, output_dir=None, output_prefix='d6tstack-', write_params={}):
+        # write_params for pyarrow.parquet.write_table
+
         # stream all chunks to multiple files
         self._combine_preview_available()
 
@@ -359,7 +361,7 @@ class CombinerCSV(object):
                 self.logger.send_log('writing '+filename , 'ok')
             pqwriter = pq.ParquetWriter(filename, pqschema)
             for dfc in self._read_csv_yield(fname, self.read_csv_params):
-                pqwriter.write_table(pa.Table.from_pandas(dfc.astype(self.df_combine_preview.dtypes), schema=pqschema))
+                pqwriter.write_table(pa.Table.from_pandas(dfc.astype(self.df_combine_preview.dtypes), schema=pqschema),**write_params)
             pqwriter.close()
             fnamesout.append(filename)
 
@@ -377,8 +379,73 @@ class CombinerCSV(object):
         pqwriter = pq.ParquetWriter(filename, pa.Table.from_pandas(self.df_combine_preview).schema)
         for fname in self.fname_list:
             for dfc in self._read_csv_yield(fname, self.read_csv_params):
-                pqwriter.write_table(pa.Table.from_pandas(dfc.astype(self.df_combine_preview.dtypes)))
+                pqwriter.write_table(pa.Table.from_pandas(dfc.astype(self.df_combine_preview.dtypes)),**write_params)
         pqwriter.close()
         return filename
 
+    def to_sql_combine(self, uri, tablename, write_params={}):
+        if 'if_exists' not in write_params:
+            write_params['if_exists'] = 'fail'
+        if 'index' not in write_params:
+            write_params['index'] = False
+        self._combine_preview_available()
 
+        import sqlalchemy
+
+        sql_engine = sqlalchemy.create_engine(uri)
+
+        self.df_combine_preview[:0].to_sql(tablename, sql_engine, **write_params)
+        write_params['if_exists'] = 'append'
+
+        for fname in self.fname_list:
+            for dfc in self._read_csv_yield(fname, self.read_csv_params):
+                dfc.astype(self.df_combine_preview.dtypes).to_sql(tablename, sql_engine, **write_params)
+
+
+    def to_psql_combine(self, uri, tablename, if_exists):
+        if not 'postgresql+psycopg2' in uri:
+            raise ValueError('need to use postgresql+psycopg2 uri')
+
+        self._combine_preview_available()
+
+        import sqlalchemy
+        import io
+
+        sql_engine = sqlalchemy.create_engine(uri)
+        sql_cnxn = sql_engine.raw_connection()
+        cursor = sql_cnxn.cursor()
+
+        self.df_combine_preview[:0].to_sql(tablename, sql_engine, if_exists=if_exists, index=False)
+
+        for fname in self.fname_list:
+            for dfc in self._read_csv_yield(fname, self.read_csv_params):
+                fbuf = io.StringIO()
+                dfc.astype(self.df_combine_preview.dtypes).to_csv(fbuf, index=False, header=False)
+                fbuf.seek(0)
+                cursor.copy_from(fbuf, tablename, sep=',', null='')
+        sql_cnxn.commit()
+        cursor.close()
+
+    def to_mysql_combine(self, uri, tablename, if_exists, tmpfile='mysql.csv'):
+        if not 'mysql' in uri:
+            raise ValueError('need to use mysql uri')
+
+        self._combine_preview_available()
+
+        import sqlalchemy
+
+        sql_engine = sqlalchemy.create_engine(uri)
+
+        self.df_combine_preview[:0].to_sql(tablename, sql_engine, if_exists=if_exists, index=False)
+
+        if self.logger:
+            self.logger.send_log('creating ' + tmpfile, 'ok')
+        self.to_csv_combine(tmpfile)
+        if self.logger:
+            self.logger.send_log('loading ' + tmpfile, 'ok')
+        sql_load = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' IGNORE 1 LINES;" % (tmpfile, tablename)
+        sql_engine.execute(sql_load)
+
+        os.remove(tmpfile)
+
+# todo: ever need to rerun _available fct instead of using cache?

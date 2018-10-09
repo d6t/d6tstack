@@ -30,6 +30,7 @@ import pandas as pd
 import ntpath
 import shutil
 import dask.dataframe as dd
+import sqlalchemy
 
 import pytest
 
@@ -381,6 +382,7 @@ def test_tocsv(create_files_csv_colmismatch):
     fnameout = CombinerCSV(fname_list=create_files_csv_colmismatch).to_csv_combine(filename=fname)
     assert fname == fnameout
     df = pd.read_csv(fname)
+    dfchk = df.copy()
     assert df.shape == (30, 4+1+2)
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
     fnameout = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select_common=True).to_csv_combine(filename=fname)
@@ -399,8 +401,7 @@ def test_tocsv(create_files_csv_colmismatch):
     df = dd.read_csv('test-data/output/d6tstack-test-data-input-csv-colmismatch-*.csv')
     df = df.compute()
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
-    df2 = pd.read_csv(fname)
-    assert df2.equals(df)
+    assert df.reset_index(drop=True).equals(dfchk)
 
     # check creates directory
     try:
@@ -444,3 +445,23 @@ def test_topq(create_files_csv_colmismatch):
     df = dd.read_parquet('test-data/output/d6tstack-test-data-input-csv-colmismatch-*.pq')
     df = df.compute()
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+
+    # todo: write tests such that compare to concat df not always repeat same code to test shape and columns
+
+def test_tosql(create_files_csv_colmismatch):
+    uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
+    tblname = 'testd6tstack'
+    sql_engine = sqlalchemy.create_engine(uri)
+    CombinerCSV(fname_list=create_files_csv_colmismatch).to_sql_combine(uri, tblname, {'if_exists':'replace'})
+    df = pd.read_sql_table(tblname, sql_engine)
+    assert df.shape == (30, 4+1+2)
+
+    CombinerCSV(fname_list=create_files_csv_colmismatch).to_psql_combine(uri, tblname, if_exists='replace')
+    df = pd.read_sql_table(tblname, sql_engine)
+    assert df.shape == (30, 4+1+2)
+
+    uri = 'mysql+mysqlconnector://augvest:augvest@localhost/augvest'
+    CombinerCSV(fname_list=create_files_csv_colmismatch).to_mysql_combine(uri, tblname, if_exists='replace')
+    df = pd.read_sql_table(tblname, sql_engine)
+    assert df.shape == (30, 4+1+2)
+
