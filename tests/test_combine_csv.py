@@ -84,16 +84,26 @@ def create_files_df_clean_combine_with_filename(fname_list):
     return df_all
 
 
-def create_files_df_colmismatch_combine(cfg_col_common):
+def create_files_df_colmismatch_combine(cfg_col_common,allstr=True):
     df1, df2, df3 = create_files_df_clean()
     df3['profit2']=df3['profit']*2
     if cfg_col_common:
         df_all = pd.concat([df1, df2, df3], join='inner')
     else:
         df_all = pd.concat([df1, df2, df3])
-    df_all = df_all[df_all.columns].astype(str)
+    if allstr:
+        df_all = df_all[df_all.columns].astype(str)
 
     return df_all
+
+
+def check_df_colmismatch_combine(dfg,is_common=False, convert_date=True):
+    dfg = dfg.drop(['filepath','filename'],1).sort_values('date').reset_index(drop=True)
+    if convert_date:
+        dfg['date'] = pd.to_datetime(dfg['date'], format='%Y-%m-%d')
+    dfchk = create_files_df_colmismatch_combine(is_common,False).reset_index(drop=True)[dfg.columns]
+    assert dfg.equals(dfchk)
+    return True
 
 
 def create_files_df_colmismatch_combine2(cfg_col_common):
@@ -385,9 +395,11 @@ def test_tocsv(create_files_csv_colmismatch):
     dfchk = df.copy()
     assert df.shape == (30, 4+1+2)
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    assert check_df_colmismatch_combine(df)
     fnameout = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select_common=True).to_csv_combine(filename=fname)
     df = pd.read_csv(fname)
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'filepath', 'filename']
+    assert check_df_colmismatch_combine(df,is_common=True)
 
     def helper(fdir):
         fnamesout = CombinerCSV(fname_list=create_files_csv_colmismatch).to_csv_align(output_dir=fdir)
@@ -402,6 +414,7 @@ def test_tocsv(create_files_csv_colmismatch):
     df = df.compute()
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
     assert df.reset_index(drop=True).equals(dfchk)
+    assert check_df_colmismatch_combine(df)
 
     # check creates directory
     try:
@@ -424,6 +437,7 @@ def test_topq(create_files_csv_colmismatch):
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
     df2 = pd.read_parquet(fname, engine='pyarrow')
     assert df2.equals(df)
+    assert check_df_colmismatch_combine(df)
 
     df = dd.read_parquet(fname)
     df = df.compute()
@@ -432,6 +446,7 @@ def test_topq(create_files_csv_colmismatch):
     assert df2.equals(df)
     df3 = pd.read_parquet(fname, engine='pyarrow')
     assert df3.equals(df)
+    assert check_df_colmismatch_combine(df)
 
 
     def helper(fdir):
@@ -445,23 +460,54 @@ def test_topq(create_files_csv_colmismatch):
     df = dd.read_parquet('test-data/output/d6tstack-test-data-input-csv-colmismatch-*.pq')
     df = df.compute()
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    assert check_df_colmismatch_combine(df)
 
     # todo: write tests such that compare to concat df not always repeat same code to test shape and columns
 
 def test_tosql(create_files_csv_colmismatch):
-    uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
     tblname = 'testd6tstack'
-    sql_engine = sqlalchemy.create_engine(uri)
-    CombinerCSV(fname_list=create_files_csv_colmismatch).to_sql_combine(uri, tblname, {'if_exists':'replace'})
-    df = pd.read_sql_table(tblname, sql_engine)
-    assert df.shape == (30, 4+1+2)
 
+    def apply(dfg):
+        dfg['date'] = pd.to_datetime(dfg['date'], format='%Y-%m-%d')
+        return dfg
+
+    def helper(uri):
+        sql_engine = sqlalchemy.create_engine(uri)
+        CombinerCSV(fname_list=create_files_csv_colmismatch).to_sql_combine(uri, tblname, {'if_exists':'replace'})
+        df = pd.read_sql_table(tblname, sql_engine)
+        assert check_df_colmismatch_combine(df)
+
+        # with date convert
+        CombinerCSV(fname_list=create_files_csv_colmismatch, apply_after_read=apply).to_sql_combine(uri, tblname, {'if_exists':'replace'})
+        df = pd.read_sql_table(tblname, sql_engine)
+        assert check_df_colmismatch_combine(df, convert_date=False)
+
+    uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
+    helper(uri)
+    uri = 'mysql+mysqlconnector://augvest:augvest@localhost/augvest'
+    helper(uri)
+
+    uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
+    sql_engine = sqlalchemy.create_engine(uri)
     CombinerCSV(fname_list=create_files_csv_colmismatch).to_psql_combine(uri, tblname, if_exists='replace')
     df = pd.read_sql_table(tblname, sql_engine)
     assert df.shape == (30, 4+1+2)
+    assert check_df_colmismatch_combine(df)
+
+    CombinerCSV(fname_list=create_files_csv_colmismatch, apply_after_read=apply).to_psql_combine(uri, tblname, if_exists='replace')
+    df = pd.read_sql_table(tblname, sql_engine)
+    assert check_df_colmismatch_combine(df, convert_date=False)
 
     uri = 'mysql+mysqlconnector://augvest:augvest@localhost/augvest'
+    sql_engine = sqlalchemy.create_engine(uri)
     CombinerCSV(fname_list=create_files_csv_colmismatch).to_mysql_combine(uri, tblname, if_exists='replace')
     df = pd.read_sql_table(tblname, sql_engine)
     assert df.shape == (30, 4+1+2)
+    assert check_df_colmismatch_combine(df)
+
+    # todo: mysql import makes NaNs 0s
+    # CombinerCSV(fname_list=create_files_csv_colmismatch, apply_after_read=apply).to_mysql_combine(uri, tblname, if_exists='replace')
+    # df = pd.read_sql_table(tblname, sql_engine)
+    # assert check_df_colmismatch_combine(df, convert_date=False)
+
 

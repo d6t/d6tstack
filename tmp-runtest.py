@@ -16,9 +16,20 @@ fname_list=glob.glob('test-data/input/test-data-input-csv-colmismatch-*.csv')
 uri = 'mysql+mysqlconnector://augvest:augvest@localhost/augvest'
 tblname = 'testd6tstack'
 
+def apply(dfg):
+    dfg['date'] = pd.to_datetime(dfg['date'], format='%Y-%m-%d')
+    return dfg
+
 importlib.reload(d6tstack.combine_csv)
 combiner = d6tstack.combine_csv.CombinerCSV(fname_list)
-fnamesout = d6tstack.combine_csv.CombinerCSV(fname_list=fname_list).to_mysql_combine(uri,tblname,'replace')
+fnamesout = d6tstack.combine_csv.CombinerCSV(fname_list=fname_list, apply_after_read=apply).to_mysql_combine(uri,tblname,'replace')
+
+import sqlalchemy
+sql_engine = sqlalchemy.create_engine(uri)
+df = pd.read_sql_table(tblname, sql_engine)
+df['profit2']
+
+# todo: mysql import makes NaNs 0s
 
 importlib.reload(d6tstack.combine_csv)
 combiner = d6tstack.combine_csv.CombinerCSV(fname_list)
