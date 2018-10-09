@@ -18,6 +18,14 @@ from .utils import PrintLogger
 def _dfconact(df):
     return pd.concat(itertools.chain.from_iterable(df), sort=False, copy=False, join='inner', ignore_index=True)
 
+def _direxists(fname, logger):
+    fdir = os.path.dirname(fname)
+    if fdir and not os.path.exists(fdir):
+        if logger:
+            logger.send_log('creating ' + fdir, 'ok')
+        os.makedirs(fdir)
+    return True
+
 # ******************************************************************
 # combiner
 # ******************************************************************
@@ -75,9 +83,6 @@ class CombinerCSV(object):
         if self.columns_select:
             if max(collections.Counter(columns_select).values())>1:
                 raise ValueError('Duplicate entries in columns_select')
-
-        if not self.columns_rename:
-            self.columns_rename = {}
 
     def _read_csv_yield(self, fname, read_csv_params):
         self._columns_reindex_available()
@@ -223,8 +228,8 @@ class CombinerCSV(object):
         self._columns_rename_dict = {} # rename columns by filename
 
         for fname in self.fname_list:
-            columns_rename = self.columns_rename.copy()
             if self.columns_rename:
+                columns_rename = self.columns_rename.copy()
                 # check no naming conflicts
                 columns_select2 = [columns_rename[k] if k in columns_rename.keys() else k for k in self.sniff_results['files_columns'][fname]]
                 df_rename_count = collections.Counter(columns_select2)
@@ -250,7 +255,7 @@ class CombinerCSV(object):
             else:
                 columns_select2 = self.sniff_results['columns_all'].copy()
 
-        if columns_rename:
+        if self.columns_rename:
             columns_select2 = list(dict.fromkeys([columns_rename[k] if k in columns_rename.keys() else k for k in columns_select2]))  # set of columns after rename
         # store select by file
         self._columns_reindex = columns_select2
@@ -277,6 +282,10 @@ class CombinerCSV(object):
         self.df_combine_preview = df.copy()
         return df
 
+    def _combine_preview_available(self):
+        if not self.df_combine_preview:
+            self.combine_preview()
+
     def to_pandas(self):
         df = [[dfc for dfc in self._read_csv_yield(fname, self.read_csv_params)] for fname in self.fname_list]
         df = _dfconact(df)
@@ -288,57 +297,88 @@ class CombinerCSV(object):
         fname_out = os.path.splitext(fname_out)[0]
         fname_out = output_prefix + fname_out + ext
 
-        # directory
+        # path
         output_dir = output_dir if output_dir else os.path.dirname(fname)
-        if not os.path.exists(output_dir):
-            if self.logger:
-                self.logger.send_log('creating ' + output_dir, 'ok')
-            os.makedirs(output_dir)
-
-        # full path
         fpath_out = os.path.join(output_dir, fname_out)
+        assert _direxists(fpath_out, self.logger)
         return fpath_out
 
-    def to_csv(self, combine=True, combine_filename='d6tstack-combined.csv', output_dir=None, output_prefix='d6stack-', write_params={}):
+    def _to_csv_prep(self, write_params):
         if 'index' not in write_params:
             write_params['index'] = False
         write_params.pop('header', None) # library handles
 
-        if not self.df_combine_preview:
-            self.combine_preview()
+        self._combine_preview_available()
 
-        # todo: what to do with output_dir? if user specifies path, relative to output dir?
-        if combine:
+        return write_params
 
-            # stream all chunks from all files to a single file
-            output_dir = output_dir if output_dir else
-            if not os.path.exists(os.path.dirname(combine_filename)):
-                if self.logger:
-                    self.logger.send_log('creating ' + output_dir, 'ok')
-                os.makedirs(output_dir)
+    def to_csv_align(self, output_dir=None, output_prefix='d6tstack-', write_params={}):
+        # stream all chunks to multiple files
 
-            fhandle = open(combine_filename, 'w')
+        write_params = self._to_csv_prep(write_params)
+
+        fnamesout = []
+        for fname in self.fname_list:
+            filename = self._get_filepath_out(fname, output_dir, output_prefix, '.csv')
+            if self.logger:
+                self.logger.send_log('writing '+filename , 'ok')
+            fhandle = open(filename, 'w')
             self.df_combine_preview[:0].to_csv(fhandle, **write_params)
-            for fname in self.fname_list:
-                for dfc in self._read_csv_yield(fname, self.read_csv_params):
-                    dfc.to_csv(fhandle, header=False, **write_params)
+            for dfc in self._read_csv_yield(fname, self.read_csv_params):
+                dfc.to_csv(fhandle, header=False, **write_params)
             fhandle.close()
-            return combine_filename
+            fnamesout.append(filename)
 
-        else:
-            # stream all chunks to multiple files
-            fnamesout = []
-            for fname in self.fname_list:
-                filename = self._get_filepath_out(fname, '.csv')
-                if self.logger:
-                    self.logger.send_log('writing '+filename , 'ok')
-                fhandle = open(filename, 'w')
-                self.df_combine_preview[:0].to_csv(fhandle, **write_params)
-                for dfc in self._read_csv_yield(fname, self.read_csv_params):
-                    dfc.to_csv(fhandle, header=False, **write_params)
-                fhandle.close()
-                fnamesout.append(filename)
+        return fnamesout
 
-            return fnamesout
+    def to_csv_combine(self, filename, write_params={}):
+        # stream all chunks from all files to a single file
+        write_params = self._to_csv_prep(write_params)
+
+        assert _direxists(filename, self.logger)
+        fhandle = open(filename, 'w')
+        self.df_combine_preview[:0].to_csv(fhandle, **write_params)
+        for fname in self.fname_list:
+            for dfc in self._read_csv_yield(fname, self.read_csv_params):
+                dfc.to_csv(fhandle, header=False, **write_params)
+        fhandle.close()
+        return filename
+
+    def to_parquet_align(self, output_dir=None, output_prefix='d6tstack-', write_params={}):
+        # stream all chunks to multiple files
+        self._combine_preview_available()
+
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        fnamesout = []
+        pqschema = pa.Table.from_pandas(self.df_combine_preview).schema
+        for fname in self.fname_list:
+            filename = self._get_filepath_out(fname, output_dir, output_prefix, '.pq')
+            if self.logger:
+                self.logger.send_log('writing '+filename , 'ok')
+            pqwriter = pq.ParquetWriter(filename, pqschema)
+            for dfc in self._read_csv_yield(fname, self.read_csv_params):
+                pqwriter.write_table(pa.Table.from_pandas(dfc.astype(self.df_combine_preview.dtypes), schema=pqschema))
+            pqwriter.close()
+            fnamesout.append(filename)
+
+        return fnamesout
+
+    def to_parquet_combine(self, filename, write_params={}):
+        # stream all chunks from all files to a single file
+        self._combine_preview_available()
+
+        assert _direxists(filename, self.logger)
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        # todo: fix mixed data type writing. at least give a warning
+        pqwriter = pq.ParquetWriter(filename, pa.Table.from_pandas(self.df_combine_preview).schema)
+        for fname in self.fname_list:
+            for dfc in self._read_csv_yield(fname, self.read_csv_params):
+                pqwriter.write_table(pa.Table.from_pandas(dfc.astype(self.df_combine_preview.dtypes)))
+        pqwriter.close()
+        return filename
 
 

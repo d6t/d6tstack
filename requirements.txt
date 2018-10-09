@@ -4,5 +4,7 @@ xlrd
 pandas>=0.22.0
 xlwt
 sqlalchemy
-boto>=2.48.0
 scipy
+pyarrow
+psycopg2
+mysql-connector

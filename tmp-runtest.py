@@ -15,4 +15,19 @@ fname_list=glob.glob('test-data/input/test-data-input-csv-colmismatch-*.csv')
 
 importlib.reload(d6tstack.combine_csv)
 combiner = d6tstack.combine_csv.CombinerCSV(fname_list)
-[combiner.get_filepath_out(fname, '.csv') for fname in fname_list]
+fnamesout = d6tstack.combine_csv.CombinerCSV(fname_list=fname_list).to_parquet_align(output_dir='test-data/output')
+# fnamesout
+
+import dask.dataframe as dd
+
+df = dd.read_parquet('test-data/output/d6tstack-test-data-input-csv-colmismatch-*.pq',index='__index_level_0__')
+df = df.compute()
+
+for fname in fnamesout:
+    df = dd.read_parquet(fname)
+    df = df.compute()
+    print(fname, df.columns)
+
+df = dd.read_parquet(fnamesout[0])
+df = df.compute()
+df

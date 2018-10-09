@@ -25,9 +25,11 @@ from d6tstack.sniffer import CSVSniffer
 
 import math
 import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
+# import pyarrow as pa
+# import pyarrow.parquet as pq
 import ntpath
+import shutil
+import dask.dataframe as dd
 
 import pytest
 
@@ -376,14 +378,69 @@ def test_combinepreview(create_files_csv_colmismatch):
 
 def test_tocsv(create_files_csv_colmismatch):
     fname = 'test-data/output/combined.csv'
-    fnameout = CombinerCSV(fname_list=create_files_csv_colmismatch).to_csv(combined=True, filename=fname)
+    fnameout = CombinerCSV(fname_list=create_files_csv_colmismatch).to_csv_combine(filename=fname)
     assert fname == fnameout
     df = pd.read_csv(fname)
     assert df.shape == (30, 4+1+2)
     assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    fnameout = CombinerCSV(fname_list=create_files_csv_colmismatch, columns_select_common=True).to_csv_combine(filename=fname)
+    df = pd.read_csv(fname)
+    assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'filepath', 'filename']
 
-    fnamesout = CombinerCSV(fname_list=create_files_csv_colmismatch, output_dir='test-data/output').to_csv(combined=False)
-    for fname in fnamesout:
-        df = pd.read_csv(fname)
-        assert df.shape == (10, 4+1+2)
-        assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    def helper(fdir):
+        fnamesout = CombinerCSV(fname_list=create_files_csv_colmismatch).to_csv_align(output_dir=fdir)
+        for fname in fnamesout:
+            df = pd.read_csv(fname)
+            assert df.shape == (10, 4+1+2)
+            assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    helper('test-data/output')
+    helper('test-data/output/')
+
+    df = dd.read_csv('test-data/output/d6tstack-test-data-input-csv-colmismatch-*.csv')
+    df = df.compute()
+    assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    df2 = pd.read_csv(fname)
+    assert df2.equals(df)
+
+    # check creates directory
+    try:
+        shutil.rmtree('test-data/output-tmp')
+    except:
+        pass
+    _ = CombinerCSV(fname_list=create_files_csv_colmismatch).to_csv_align(output_dir='test-data/output-tmp')
+    try:
+        shutil.rmtree('test-data/output-tmp')
+    except:
+        pass
+
+
+def test_topq(create_files_csv_colmismatch):
+    fname = 'test-data/output/combined.pq'
+    fnameout = CombinerCSV(fname_list=create_files_csv_colmismatch).to_parquet_combine(filename=fname)
+    assert fname == fnameout
+    df = pd.read_parquet(fname, engine='fastparquet')
+    assert df.shape == (30, 4+1+2)
+    assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    df2 = pd.read_parquet(fname, engine='pyarrow')
+    assert df2.equals(df)
+
+    df = dd.read_parquet(fname)
+    df = df.compute()
+    assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    df2 = pd.read_parquet(fname, engine='fastparquet')
+    assert df2.equals(df)
+    df3 = pd.read_parquet(fname, engine='pyarrow')
+    assert df3.equals(df)
+
+
+    def helper(fdir):
+        fnamesout = CombinerCSV(fname_list=create_files_csv_colmismatch).to_parquet_align(output_dir=fdir)
+        for fname in fnamesout:
+            df = pd.read_parquet(fname, engine='fastparquet')
+            assert df.shape == (10, 4+1+2)
+            assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
+    helper('test-data/output')
+
+    df = dd.read_parquet('test-data/output/d6tstack-test-data-input-csv-colmismatch-*.pq')
+    df = df.compute()
+    assert df.columns.tolist() == ['date', 'sales', 'cost', 'profit', 'profit2', 'filepath', 'filename']
