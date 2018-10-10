@@ -484,7 +484,7 @@ def test_tosql(create_files_csv_colmismatch):
 
     uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
     helper(uri)
-    uri = 'mysql+mysqlconnector://augvest:augvest@localhost/augvest'
+    uri = 'mysql+pymysql://augvest:augvest@localhost/augvest'
     helper(uri)
 
     uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
@@ -502,12 +502,13 @@ def test_tosql(create_files_csv_colmismatch):
     sql_engine = sqlalchemy.create_engine(uri)
     CombinerCSV(fname_list=create_files_csv_colmismatch).to_mysql_combine(uri, tblname, if_exists='replace')
     df = pd.read_sql_table(tblname, sql_engine)
+    print(df.sort_values('date').head(10))
     assert df.shape == (30, 4+1+2)
     assert check_df_colmismatch_combine(df)
 
     # todo: mysql import makes NaNs 0s
-    # CombinerCSV(fname_list=create_files_csv_colmismatch, apply_after_read=apply).to_mysql_combine(uri, tblname, if_exists='replace')
-    # df = pd.read_sql_table(tblname, sql_engine)
-    # assert check_df_colmismatch_combine(df, convert_date=False)
+    CombinerCSV(fname_list=create_files_csv_colmismatch, apply_after_read=apply).to_mysql_combine(uri, tblname, if_exists='replace')
+    df = pd.read_sql_table(tblname, sql_engine)
+    assert check_df_colmismatch_combine(df, convert_date=False)
 
 

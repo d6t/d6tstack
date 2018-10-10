@@ -383,20 +383,33 @@ class CombinerCSV(object):
         pqwriter.close()
         return filename
 
-    def to_sql_combine(self, uri, tablename, write_params={}):
+    def to_sql_combine(self, uri, tablename, write_params=None, create_table = True, return_create_sql=False):
+        if not write_params:
+            write_params = {}
         if 'if_exists' not in write_params:
             write_params['if_exists'] = 'fail'
         if 'index' not in write_params:
             write_params['index'] = False
         self._combine_preview_available()
 
+        if 'mysql' in uri and not 'mysql+pymysql' in uri:
+            raise ValueError('need to use pymysql for mysql (pip install pymysql)')
+
         import sqlalchemy
 
         sql_engine = sqlalchemy.create_engine(uri)
 
-        self.df_combine_preview[:0].to_sql(tablename, sql_engine, **write_params)
-        write_params['if_exists'] = 'append'
+        # create table
+        dfhead = self.df_combine_preview.astype(self.df_combine_preview.dtypes)[:0]
 
+        if return_create_sql:
+            return pd.io.sql.get_schema(dfhead, tablename).replace('"',"`")
+
+        if create_table:
+            dfhead.to_sql(tablename, sql_engine, **write_params)
+
+        # append data
+        write_params['if_exists'] = 'append'
         for fname in self.fname_list:
             for dfc in self._read_csv_yield(fname, self.read_csv_params):
                 dfc.astype(self.df_combine_preview.dtypes).to_sql(tablename, sql_engine, **write_params)
@@ -427,8 +440,8 @@ class CombinerCSV(object):
         cursor.close()
 
     def to_mysql_combine(self, uri, tablename, if_exists, tmpfile='mysql.csv'):
-        if not 'mysql' in uri:
-            raise ValueError('need to use mysql uri')
+        if not 'mysql+mysqlconnector' in uri:
+            raise ValueError('need to use mysql+mysqlconnector uri (pip install mysql-connector)')
 
         self._combine_preview_available()
 
@@ -440,7 +453,7 @@ class CombinerCSV(object):
 
         if self.logger:
             self.logger.send_log('creating ' + tmpfile, 'ok')
-        self.to_csv_combine(tmpfile)
+        self.to_csv_combine(tmpfile, write_params={'na_rep':'\\N'})
         if self.logger:
             self.logger.send_log('loading ' + tmpfile, 'ok')
         sql_load = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' IGNORE 1 LINES;" % (tmpfile, tablename)

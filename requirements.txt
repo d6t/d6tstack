@@ -8,3 +8,4 @@ scipy
 pyarrow
 psycopg2
 mysql-connector
+pymysql
