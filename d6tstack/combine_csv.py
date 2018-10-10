@@ -32,31 +32,31 @@ def _direxists(fname, logger):
 
 class CombinerCSV(object):
     """    
-    Core combiner class. Checks columns, generates preview, combines.
+    Core combiner class. Sniffs columns, generates preview, combines aka stacks to various output formats.
 
     Args:
         fname_list (list): file names, eg ['a.csv','b.csv']
         sep (string): CSV delimiter, see pandas.read_csv()
         has_header (boolean): data has header row 
-        all_strings (boolean): read all values as strings (faster) 
-        header_row (int): header row, see pandas.read_csv()
-        skiprows (int): rows to skip at top of file, see pandas.read_csv()
         nrows_preview (int): number of rows in preview
-        add_filename (bool): add filename column to output data frame. If `False`, will not add column.
+        chunksize (int): number of rows to read into memory while processing, see pandas.read_csv()
+        read_csv_params (dict): additional parameters to pass to pandas.read_csv()
         columns_select (list): list of column names to keep
+        columns_select_common (bool): keep only common columns. Use this instead of `columns_select`
         columns_rename (dict): dict of columns to rename `{'name_old':'name_new'}
+        add_filename (bool): add filename column to output data frame. If `False`, will not add column.
         apply_after_read (function): function to apply after reading each file. needs to return a dataframe
-        logger (object): logger object with send_log()
+        log (bool): send logs to logger
+        logger (object): logger object with `send_log()`
 
     """
 
-    def __init__(self, fname_list, sep=',', has_header = True, all_strings=False, nrows_preview=3, read_csv_params=None,
+    def __init__(self, fname_list, sep=',', nrows_preview=3, chunksize=1e6, read_csv_params=None,
                  columns_select=None, columns_select_common=False, columns_rename=None, add_filename=True,
-                 apply_after_read=None, chunksize=3, log=True, logger=None):
+                 apply_after_read=None, log=True, logger=None):
         if not fname_list:
             raise ValueError("Filename list should not be empty")
         self.fname_list = np.sort(fname_list)
-        self.all_strings = all_strings
         self.nrows_preview = nrows_preview
         self.read_csv_params = read_csv_params
         if not self.read_csv_params:
@@ -67,6 +67,8 @@ class CombinerCSV(object):
         self.logger = logger
         if not logger and log:
             self.logger = PrintLogger()
+        if not log:
+            self.logger = None
         self.sniff_results = None
         self.add_filename = add_filename
         self.columns_select = columns_select
@@ -265,15 +267,33 @@ class CombinerCSV(object):
             self._columns_reindex_prep()
 
     def preview_rename(self):
+        """
+        Shows which columns will be renamed in processing
+
+        Returns:
+            dataframe: columns to be renamed from which file
+        """
         self._columns_reindex_available()
         df = pd.DataFrame(self._columns_rename_dict).T
         return df
 
     def preview_select(self):
+        """
+        Shows which columns will be selected in processing
+
+        Returns:
+            list: columns to be selected from all files
+        """
         self._columns_reindex_available()
         return self._columns_reindex
 
     def combine_preview(self):
+        """
+        Preview of what the combined data will look like
+
+        Returns:
+            dataframe: combined dataframe
+        """
         read_csv_params = copy.deepcopy(self.read_csv_params)
         read_csv_params['nrows'] = self.nrows_preview
 
@@ -287,6 +307,12 @@ class CombinerCSV(object):
             self.combine_preview()
 
     def to_pandas(self):
+        """
+        Combine all files to a pandas dataframe
+
+        Returns:
+            dataframe: combined data
+        """
         df = [[dfc for dfc in self._read_csv_yield(fname, self.read_csv_params)] for fname in self.fname_list]
         df = _dfconact(df)
         return df
@@ -313,6 +339,17 @@ class CombinerCSV(object):
         return write_params
 
     def to_csv_align(self, output_dir=None, output_prefix='d6tstack-', write_params={}):
+        """
+        Create cleaned versions of original files. Automatically runs out of core, using `self.chunksize`.
+
+        Args:
+            output_dir (str): directory to save files in. If not given save in the same directory as the original file
+            output_prefix (str): prepend with prefix to distinguish from original files
+            write_params (dict): additional params to pass to `pandas.to_csv()`
+
+        Returns:
+            list: list of filenames of processed files
+        """
         # stream all chunks to multiple files
 
         write_params = self._to_csv_prep(write_params)
@@ -332,6 +369,16 @@ class CombinerCSV(object):
         return fnamesout
 
     def to_csv_combine(self, filename, write_params={}):
+        """
+        Combines all files to a single csv file. Automatically runs out of core, using `self.chunksize`.
+
+        Args:
+            filename (str): file names
+            write_params (dict): additional params to pass to `pandas.to_csv()`
+
+        Returns:
+            str: filename for combined data
+        """
         # stream all chunks from all files to a single file
         write_params = self._to_csv_prep(write_params)
 
@@ -345,6 +392,10 @@ class CombinerCSV(object):
         return filename
 
     def to_parquet_align(self, output_dir=None, output_prefix='d6tstack-', write_params={}):
+        """
+        Same as `to_csv_align` but outputs parquet files
+
+        """
         # write_params for pyarrow.parquet.write_table
 
         # stream all chunks to multiple files
@@ -368,6 +419,10 @@ class CombinerCSV(object):
         return fnamesout
 
     def to_parquet_combine(self, filename, write_params={}):
+        """
+        Same as `to_csv_combine` but outputs parquet files
+
+        """
         # stream all chunks from all files to a single file
         self._combine_preview_available()
 
@@ -384,6 +439,19 @@ class CombinerCSV(object):
         return filename
 
     def to_sql_combine(self, uri, tablename, write_params=None, return_create_sql=False):
+        """
+        Load all files into a sql table using sqlalchemy. Generic but slower than the optmized functions
+
+        Args:
+            uri (str): sqlalchemy database uri
+            tablename (str): table to store data in
+            write_params (dict): additional params to pass to `pandas.to_sql()`
+            return_create_sql (dict): show create sql statement for combined file schema. Doesn't run data load
+
+        Returns:
+            bool: True if loader finished
+
+        """
         if not write_params:
             write_params = {}
         if 'if_exists' not in write_params:
@@ -413,8 +481,22 @@ class CombinerCSV(object):
             for dfc in self._read_csv_yield(fname, self.read_csv_params):
                 dfc.astype(self.df_combine_preview.dtypes).to_sql(tablename, sql_engine, **write_params)
 
+        return True
 
     def to_psql_combine(self, uri, tablename, if_exists):
+        """
+        Load all files into a sql table using native postgres COPY FROM. Chunks data load to reduce memory consumption
+
+        Args:
+            uri (str): postgres psycopg2 sqlalchemy database uri
+            tablename (str): table to store data in
+            if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
+
+        Returns:
+            bool: True if loader finished
+
+        """
+
         if not 'postgresql+psycopg2' in uri:
             raise ValueError('need to use postgresql+psycopg2 uri')
 
@@ -438,7 +520,21 @@ class CombinerCSV(object):
         sql_cnxn.commit()
         cursor.close()
 
+        return True
+
     def to_mysql_combine(self, uri, tablename, if_exists, tmpfile='mysql.csv'):
+        """
+        Load all files into a sql table using native postgres LOAD DATA LOCAL INFILE. Chunks data load to reduce memory consumption
+
+        Args:
+            uri (str): mysql mysqlconnector sqlalchemy database uri
+            tablename (str): table to store data in
+            if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
+
+        Returns:
+            bool: True if loader finished
+
+        """
         if not 'mysql+mysqlconnector' in uri:
             raise ValueError('need to use mysql+mysqlconnector uri (pip install mysql-connector)')
 
@@ -459,5 +555,7 @@ class CombinerCSV(object):
         sql_engine.execute(sql_load)
 
         os.remove(tmpfile)
+
+        return True
 
 # todo: ever need to rerun _available fct instead of using cache?
