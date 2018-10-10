@@ -2,16 +2,18 @@
 
 Use this to run tests and understand how tasks.py works.
 
-Example:
+Setup::
 
-    Create directories::
+    mkdir -p test-data/input
+    mkdir -p test-data/output
+    mysql -u root -p
+        CREATE DATABASE testdb;
+        CREATE USER 'testusr'@'localhost' IDENTIFIED BY 'testpwd';
+        GRANT ALL PRIVILEGES ON testdb.* TO 'testusr'@'%';
 
-        mkdir -p test-data/input
-        mkdir -p test-data/output
+Run tests::
 
-    Run tests::
-
-        pytest test_combine.py -s
+    pytest test_combine.py -s
 
 Notes:
 
@@ -484,7 +486,7 @@ def test_tosql(create_files_csv_colmismatch):
 
     uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
     helper(uri)
-    uri = 'mysql+pymysql://augvest:augvest@localhost/augvest'
+    uri = 'mysql+pymysql://testusr:testpwd@localhost/testdb'
     helper(uri)
 
     uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
@@ -498,7 +500,7 @@ def test_tosql(create_files_csv_colmismatch):
     df = pd.read_sql_table(tblname, sql_engine)
     assert check_df_colmismatch_combine(df, convert_date=False)
 
-    uri = 'mysql+mysqlconnector://augvest:augvest@localhost/augvest'
+    uri = 'mysql+mysqlconnector://testusr:testpwd@localhost/testdb'
     sql_engine = sqlalchemy.create_engine(uri)
     CombinerCSV(fname_list=create_files_csv_colmismatch).to_mysql_combine(uri, tblname, if_exists='replace')
     df = pd.read_sql_table(tblname, sql_engine)

@@ -14,8 +14,8 @@ fname_list=glob.glob('test-data/input/test-data-input-csv-colmismatch-*.csv')
 # combiner.is_column_present_common()
 # combiner.sniff_results['df_columns_order']['profit'].values.tolist()
 
-uri = 'mysql+mysqlconnector://augvest:augvest@localhost/augvest'
-uri = 'mysql+pymysql://augvest:augvest@localhost/augvest'
+uri = 'mysql+mysqlconnector://testusr:testpwd@localhost/testdb'
+uri = 'mysql+pymysql://testusr:testpwd@localhost/testdb'
 
 tblname = 'testd6tstack'
 
