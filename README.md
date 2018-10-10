@@ -14,7 +14,7 @@ Vendors often send large datasets in multiple files. Often there are missing and
 * Check Excel tabs for consistency across files
 * Excel to CSV converter (incl multi-sheet support)
 * Out of core functionality to process large files
-* Export to CSV, pandas, SQL
+* Export to CSV, parquet, SQL, pandas dataframe
 
 ### Sample Use
 
