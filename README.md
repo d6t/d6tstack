@@ -39,10 +39,22 @@ False
 0   jan.csv  -80  2011-01-01     20     NaN   100
 0   mar.csv  -100  2011-03-01    200     400   300
 
->>> c.combine_preview(is_col_common=True) # keep common columns
+>>> d6tstack.combine_csv.CombinerCSV(glob.glob('*.csv'), columns_select_common=True) # keep common columns
    filename  cost        date profit sales
 0   jan.csv  -80  2011-01-01     20   100
 0   mar.csv  -100  2011-03-01    200   300
+
+>>> d6tstack.combine_csv.CombinerCSV(glob.glob('*.csv'), columns_rename={'sales':'revenue'})
+   filename  cost        date profit profit2 revenue
+0   jan.csv  -80  2011-01-01     20     NaN   100
+0   mar.csv  -100  2011-03-01    200     400   300
+
+# export to csv, parquet, sql. Out of core with optimized fast imports for postgres and mysql
+>>> c.to_csv_align(output_dir='process/')
+>>> c.to_parquet_align(output_dir='process/')
+>>> c.to_sql_combine('postgresql+psycopg2://usr:pwd@localhost/db', 'tablename')
+>>> c.to_psql_combine('postgresql+psycopg2://usr:pwd@localhost/db', 'tablename') # fast, using COPY FROM
+>>> c.to_mysql_combine('mysql+mysqlconnector://usr:pwd@localhost/db', 'tablename') # fast, using LOAD DATA LOCAL INFILE
 
 ```
 
@@ -56,7 +68,7 @@ If you cannot install from github, use the latest published version `pip install
 
 ## Documentation
 
-*  [CSV examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-combiner.ipynb) - Quickly load any type of CSV files
+*  [CSV examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-csv.ipynb) - Quickly load any type of CSV files
 *  [Excel examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-excel.ipynb) - Quickly extract from Excel to CSV 
 *  [Dask Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-dask.ipynb) - How to use d6tstack to solve Dask input file problems
 *  [Pyspark Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-pyspark.ipynb) - How to use d6tstack to solve pyspark input file problems

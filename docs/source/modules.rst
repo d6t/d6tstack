@@ -6,4 +6,3 @@ d6tstack
 
    d6tstack
    setup
-   tests

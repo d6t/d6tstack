@@ -383,7 +383,7 @@ class CombinerCSV(object):
         pqwriter.close()
         return filename
 
-    def to_sql_combine(self, uri, tablename, write_params=None, create_table = True, return_create_sql=False):
+    def to_sql_combine(self, uri, tablename, write_params=None, return_create_sql=False):
         if not write_params:
             write_params = {}
         if 'if_exists' not in write_params:
@@ -405,8 +405,7 @@ class CombinerCSV(object):
         if return_create_sql:
             return pd.io.sql.get_schema(dfhead, tablename).replace('"',"`")
 
-        if create_table:
-            dfhead.to_sql(tablename, sql_engine, **write_params)
+        dfhead.to_sql(tablename, sql_engine, **write_params)
 
         # append data
         write_params['if_exists'] = 'append'
