@@ -24,6 +24,7 @@ Notes:
 
 from d6tstack.combine_csv import *
 from d6tstack.sniffer import CSVSniffer
+import d6tstack.utils
 
 import math
 import pandas as pd
@@ -475,12 +476,12 @@ def test_tosql(create_files_csv_colmismatch):
 
     def helper(uri):
         sql_engine = sqlalchemy.create_engine(uri)
-        CombinerCSV(fname_list=create_files_csv_colmismatch).to_sql_combine(uri, tblname, {'if_exists':'replace'})
+        CombinerCSV(fname_list=create_files_csv_colmismatch).to_sql_combine(uri, tblname, 'replace')
         df = pd.read_sql_table(tblname, sql_engine)
         assert check_df_colmismatch_combine(df)
 
         # with date convert
-        CombinerCSV(fname_list=create_files_csv_colmismatch, apply_after_read=apply).to_sql_combine(uri, tblname, {'if_exists':'replace'})
+        CombinerCSV(fname_list=create_files_csv_colmismatch, apply_after_read=apply).to_sql_combine(uri, tblname, 'replace')
         df = pd.read_sql_table(tblname, sql_engine)
         assert check_df_colmismatch_combine(df, convert_date=False)
 
@@ -504,7 +505,6 @@ def test_tosql(create_files_csv_colmismatch):
     sql_engine = sqlalchemy.create_engine(uri)
     CombinerCSV(fname_list=create_files_csv_colmismatch).to_mysql_combine(uri, tblname, if_exists='replace')
     df = pd.read_sql_table(tblname, sql_engine)
-    print(df.sort_values('date').head(10))
     assert df.shape == (30, 4+1+2)
     assert check_df_colmismatch_combine(df)
 
@@ -514,3 +514,20 @@ def test_tosql(create_files_csv_colmismatch):
     assert check_df_colmismatch_combine(df, convert_date=False)
 
 
+def test_tosql_util(create_files_csv_colmismatch):
+    tblname = 'testd6tstack'
+
+    uri = 'postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest'
+    sql_engine = sqlalchemy.create_engine(uri)
+    dfc = CombinerCSV(fname_list=create_files_csv_colmismatch).to_pandas()
+
+    # psql
+    d6tstack.utils.pd_to_psql(dfc, uri, tblname, if_exists='replace')
+    df = pd.read_sql_table(tblname, sql_engine)
+    assert df.equals(dfc)
+
+    uri = 'mysql+mysqlconnector://testusr:testpwd@localhost/testdb'
+    sql_engine = sqlalchemy.create_engine(uri)
+    d6tstack.utils.pd_to_mysql(dfc, uri, tblname, if_exists='replace')
+    df = pd.read_sql_table(tblname, sql_engine)
+    assert df.equals(dfc)

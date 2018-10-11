@@ -61,9 +61,10 @@ class CombinerCSV(object):
         self.read_csv_params = read_csv_params
         if not self.read_csv_params:
             self.read_csv_params = {}
-        self.read_csv_params['header'] = 0 if has_header else None
-        self.read_csv_params['sep'] = sep
-        self.read_csv_params['chunksize'] = chunksize
+        if not 'sep' in self.read_csv_params:
+            self.read_csv_params['sep'] = sep
+        if not 'chunksize' in self.read_csv_params:
+            self.read_csv_params['chunksize'] = chunksize
         self.logger = logger
         if not logger and log:
             self.logger = PrintLogger()
@@ -438,13 +439,14 @@ class CombinerCSV(object):
         pqwriter.close()
         return filename
 
-    def to_sql_combine(self, uri, tablename, write_params=None, return_create_sql=False):
+    def to_sql_combine(self, uri, tablename, if_exists='fail', write_params=None, return_create_sql=False):
         """
         Load all files into a sql table using sqlalchemy. Generic but slower than the optmized functions
 
         Args:
             uri (str): sqlalchemy database uri
             tablename (str): table to store data in
+            if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
             write_params (dict): additional params to pass to `pandas.to_sql()`
             return_create_sql (dict): show create sql statement for combined file schema. Doesn't run data load
 
@@ -455,7 +457,7 @@ class CombinerCSV(object):
         if not write_params:
             write_params = {}
         if 'if_exists' not in write_params:
-            write_params['if_exists'] = 'fail'
+            write_params['if_exists'] = if_exists
         if 'index' not in write_params:
             write_params['index'] = False
         self._combine_preview_available()
@@ -483,7 +485,7 @@ class CombinerCSV(object):
 
         return True
 
-    def to_psql_combine(self, uri, tablename, if_exists):
+    def to_psql_combine(self, uri, tablename, if_exists='fail'):
         """
         Load all files into a sql table using native postgres COPY FROM. Chunks data load to reduce memory consumption
 
@@ -497,8 +499,8 @@ class CombinerCSV(object):
 
         """
 
-        if not 'postgresql+psycopg2' in uri:
-            raise ValueError('need to use postgresql+psycopg2 uri')
+        if not 'psycopg2' in uri:
+            raise ValueError('need to use psycopg2 uri')
 
         self._combine_preview_available()
 
@@ -522,7 +524,7 @@ class CombinerCSV(object):
 
         return True
 
-    def to_mysql_combine(self, uri, tablename, if_exists, tmpfile='mysql.csv'):
+    def to_mysql_combine(self, uri, tablename, if_exists='fail', tmpfile='mysql.csv'):
         """
         Load all files into a sql table using native postgres LOAD DATA LOCAL INFILE. Chunks data load to reduce memory consumption
 
@@ -530,6 +532,7 @@ class CombinerCSV(object):
             uri (str): mysql mysqlconnector sqlalchemy database uri
             tablename (str): table to store data in
             if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
+            tmpfile (str): filename for temporary file to load from
 
         Returns:
             bool: True if loader finished

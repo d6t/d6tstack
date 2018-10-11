@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 from openpyxl.utils import coordinate_from_string
@@ -88,3 +89,74 @@ class PrintLogger(object):
     def send(self, data):
         print(data)
 
+
+def pd_to_psql(df, uri, tablename, if_exists='fail'):
+    """
+    Load pandas dataframe into a sql table using native postgres COPY FROM.
+
+    Args:
+        df (dataframe): pandas dataframe
+        uri (str): postgres psycopg2 sqlalchemy database uri
+        tablename (str): table to store data in
+        if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
+
+    Returns:
+        bool: True if loader finished
+
+    """
+
+    if not 'psycopg2' in uri:
+        raise ValueError('need to use psycopg2 uri')
+
+    import sqlalchemy
+    import io
+
+    sql_engine = sqlalchemy.create_engine(uri)
+    sql_cnxn = sql_engine.raw_connection()
+    cursor = sql_cnxn.cursor()
+
+    df[:0].to_sql(tablename, sql_engine, if_exists=if_exists, index=False)
+
+    fbuf = io.StringIO()
+    df.to_csv(fbuf, index=False, header=False)
+    fbuf.seek(0)
+    cursor.copy_from(fbuf, tablename, sep=',', null='')
+    sql_cnxn.commit()
+    cursor.close()
+
+    return True
+
+def pd_to_mysql(df, uri, tablename, if_exists='fail', tmpfile='mysql.csv'):
+    """
+    Load dataframe into a sql table using native postgres LOAD DATA LOCAL INFILE.
+
+    Args:
+        df (dataframe): pandas dataframe
+        uri (str): mysql mysqlconnector sqlalchemy database uri
+        tablename (str): table to store data in
+        if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
+        tmpfile (str): filename for temporary file to load from
+
+    Returns:
+        bool: True if loader finished
+
+    """
+    if not 'mysql+mysqlconnector' in uri:
+        raise ValueError('need to use mysql+mysqlconnector uri (pip install mysql-connector)')
+
+    import sqlalchemy
+
+    sql_engine = sqlalchemy.create_engine(uri)
+
+    df[:0].to_sql(tablename, sql_engine, if_exists=if_exists, index=False)
+
+    logger = PrintLogger()
+    logger.send_log('creating ' + tmpfile, 'ok')
+    df.to_csv(tmpfile, na_rep='\\N', index=False)
+    logger.send_log('loading ' + tmpfile, 'ok')
+    sql_load = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' IGNORE 1 LINES;" % (tmpfile, tablename)
+    sql_engine.execute(sql_load)
+
+    os.remove(tmpfile)
+
+    return True
