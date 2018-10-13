@@ -63,7 +63,7 @@ False
 
 We recommend using the latest version from github `pip install git+https://github.com/d6t/d6tstack.git`
 
-If you cannot install from github, use the latest published version `pip install d6tstack`
+If you cannot install from github, use the latest published version `pip install d6tstack`. For SQL and parquet support, additionally install `d6tstack[sql]` and `d6tstack[parquet]`.
 
 
 ## Documentation
