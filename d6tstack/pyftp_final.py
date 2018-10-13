@@ -46,8 +46,8 @@ def upload_to_s3(bucket):
 
 if __name__ == "__main__":
     print("S3 File sync")
-    s3_id = 'AKIAJKBCOSRJ66APA6SA'
-    s3_key = 'wXW1dbjyzN2aAus6zIixJIDO4IU8IQG+YUuJeyeA'
+    s3_id = ''
+    s3_key = ''
     bucket_name = 'test-anuj-ftp-sync'
 
     cfg_ftp_host = 'ftp.fic.com.tw'
