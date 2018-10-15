@@ -1,6 +1,6 @@
 # Databolt File Stack
 
-Automatically combine multiple files into one by stacking them together. Works for .xls, .csv, .txt.
+Automatically combine multiple files into one by stacking them together. Works for XLS, CSV, TXT which can be exported to CSV, Parquet, SQL and Pandas.
 
 Vendors often send large datasets in multiple files. Often there are missing and misaligned columns between files that have to be manually cleaned. With DataBolt File Combiner you can easily stack them together into one dataframe.
 
