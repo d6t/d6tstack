@@ -65,7 +65,7 @@ d6tstack.convert_xls.XLStoCSVMultiSheet('test.xls').convert_all(header_xls_range
 
 d6tstack.convert_xls.XLStoCSVMultiFile(glob.glob('*.xls'), 
     cfg_xls_sheets_sel_mode='name_global',cfg_xls_sheets_sel='Sheet1')
-    .convert_all()
+    .convert_all(header_xls_range="B2:E2")
 
 ```
 
