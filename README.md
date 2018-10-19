@@ -18,7 +18,7 @@ Vendors often send large datasets in multiple files. Often there are missing and
 
 ### Sample Use
 
-```python
+```
 
 import glob
 import d6tstack
