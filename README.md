@@ -49,6 +49,9 @@ False
 0   jan.csv  -80  2011-01-01     20     NaN   100
 0   mar.csv  -100  2011-03-01    200     400   300
 
+# to come: check if columns match database
+>>> c.is_columns_match_db('postgresql+psycopg2://usr:pwd@localhost/db', 'tablename')
+
 # export to csv, parquet, sql. Out of core with optimized fast imports for postgres and mysql
 >>> c.to_csv_align(output_dir='process/')
 >>> c.to_parquet_align(output_dir='process/')
