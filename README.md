@@ -56,6 +56,17 @@ False
 >>> c.to_psql_combine('postgresql+psycopg2://usr:pwd@localhost/db', 'tablename') # fast, using COPY FROM
 >>> c.to_mysql_combine('mysql+mysqlconnector://usr:pwd@localhost/db', 'tablename') # fast, using LOAD DATA LOCAL INFILE
 
+# read Excel files
+
+d6tstack.utils.read_excel_advanced('test.xls',
+    sheet_name='Sheet1', header_xls_range="B2:E2")
+
+d6tstack.convert_xls.XLStoCSVMultiSheet('test.xls').convert_all()
+
+d6tstack.convert_xls.XLStoCSVMultiFile(glob.glob('*.xls'), 
+    cfg_xls_sheets_sel_mode='name_global',cfg_xls_sheets_sel='Sheet1')
+    .convert_all()
+
 ```
 
 
