@@ -22,7 +22,7 @@ Vendors often send large datasets in multiple files. Often there are missing and
 
 import glob
 import d6tstack
->>> c = d6tstack.combine_csv.CombinerCSV(glob.glob('*.csv'))
+>>> c = d6tstack.combine_csv.CombinerCSV(glob.glob('data/*.csv'))
 
 # quick check if all files have consistent columns
 >>> c.is_all_equal()
