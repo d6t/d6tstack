@@ -90,7 +90,7 @@ class PrintLogger(object):
         print(data)
 
 
-def pd_to_psql(df, uri, tablename, if_exists='fail'):
+def pd_to_psql(df, uri, tablename, schema_name=None, if_exists='fail'):
     """
     Load pandas dataframe into a sql table using native postgres COPY FROM.
 
@@ -98,6 +98,7 @@ def pd_to_psql(df, uri, tablename, if_exists='fail'):
         df (dataframe): pandas dataframe
         uri (str): postgres psycopg2 sqlalchemy database uri
         tablename (str): table to store data in
+        schema_name (str): name of schema to write to
         if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
 
     Returns:
@@ -111,11 +112,11 @@ def pd_to_psql(df, uri, tablename, if_exists='fail'):
     import sqlalchemy
     import io
 
-    sql_engine = sqlalchemy.create_engine(uri)
+    sql_engine = sqlalchemy.create_engine(uri, connect_args={'options': '-csearch_path={}'.format(schema)})
     sql_cnxn = sql_engine.raw_connection()
     cursor = sql_cnxn.cursor()
 
-    df[:0].to_sql(tablename, sql_engine, if_exists=if_exists, index=False)
+    df[:0].to_sql(tablename, sql_engine, schema=schema_name, if_exists=if_exists, index=False)
 
     fbuf = io.StringIO()
     df.to_csv(fbuf, index=False, header=False)
@@ -126,7 +127,7 @@ def pd_to_psql(df, uri, tablename, if_exists='fail'):
 
     return True
 
-def pd_to_mysql(df, uri, tablename, if_exists='fail', tmpfile='mysql.csv'):
+def pd_to_mysql(df, uri, tablename, schema_name=None, if_exists='fail', tmpfile='mysql.csv'):
     """
     Load dataframe into a sql table using native postgres LOAD DATA LOCAL INFILE.
 
@@ -134,6 +135,7 @@ def pd_to_mysql(df, uri, tablename, if_exists='fail', tmpfile='mysql.csv'):
         df (dataframe): pandas dataframe
         uri (str): mysql mysqlconnector sqlalchemy database uri
         tablename (str): table to store data in
+        schema_name (str): name of schema to write to
         if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
         tmpfile (str): filename for temporary file to load from
 
@@ -146,9 +148,9 @@ def pd_to_mysql(df, uri, tablename, if_exists='fail', tmpfile='mysql.csv'):
 
     import sqlalchemy
 
-    sql_engine = sqlalchemy.create_engine(uri)
+    sql_engine = sqlalchemy.create_engine(uri, connect_args={'options': '-csearch_path={}'.format(schema)})
 
-    df[:0].to_sql(tablename, sql_engine, if_exists=if_exists, index=False)
+    df[:0].to_sql(tablename, sql_engine, schema = schema_name, if_exists=if_exists, index=False)
 
     logger = PrintLogger()
     logger.send_log('creating ' + tmpfile, 'ok')
