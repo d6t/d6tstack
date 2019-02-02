@@ -1,0 +1,8 @@
+pytest
+sphinx
+sphinxcontrib-napoleon
+sphinx_rtd_theme
+dask[dataframe]
+fastparquet
+python-snappy
+xlwt

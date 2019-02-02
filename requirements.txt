@@ -1,0 +1,10 @@
+numpy
+openpyxl
+xlrd
+pandas>=0.22.0
+sqlalchemy
+scipy
+pyarrow
+psycopg2
+mysql-connector
+d6tcollect
