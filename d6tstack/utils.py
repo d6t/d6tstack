@@ -178,7 +178,7 @@ def pd_to_mssql(df, uri, table_name, schema_name=None, if_exists='fail', tmpfile
     logger.send_log('loading ' + tmpfile, 'ok')
     if schema_name is not None:
         table_name = '{}.{}'.format(schema_name,table_name)
-    sql_load = "BULK INSERT {} FROM '{}';".format()(table_name, tmpfile)
+    sql_load = "BULK INSERT {} FROM '{}';".format(table_name, tmpfile)
     sql_engine.execute(sql_load)
 
     os.remove(tmpfile)
