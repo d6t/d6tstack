@@ -84,7 +84,7 @@ def pd_to_psql(df, uri, table_name, schema_name=None, if_exists='fail', sep=',')
     """
 
     if not 'psycopg2' in uri:
-        raise ValueError('need to use psycopg2 uri')
+        raise ValueError('need to use psycopg2 uri eg postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest. install with `pip install psycopg2-binary`')
 
     import sqlalchemy
     import io
@@ -126,7 +126,7 @@ def pd_to_mysql(df, uri, table_name, if_exists='fail', tmpfile='mysql.csv', sep=
 
     """
     if not 'mysql+mysqlconnector' in uri:
-        raise ValueError('need to use mysql+mysqlconnector uri (pip install mysql-connector)')
+        raise ValueError('need to use mysql+mysqlconnector uri eg mysql+mysqlconnector://testusr:testpwd@localhost/testdb. install with `pip install mysql-connector`')
 
     import sqlalchemy
 

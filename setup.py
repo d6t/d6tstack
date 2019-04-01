@@ -3,11 +3,13 @@ from setuptools import setup
 extras = {
     'xls': ['openpyxl','xlrd'],
     'parquet': ['pyarrow'],
+    'psql': ['psycopg2-binary'],
+    'mysql': ['mysql-connector'],
 }
 
 setup(
     name='d6tstack',
-    version='0.1.6',
+    version='0.1.7',
     packages=['d6tstack'],
     url='https://github.com/d6t/d6tstack',
     license='MIT',

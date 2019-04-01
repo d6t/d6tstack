@@ -15,6 +15,17 @@ Quickly ingest raw files. Works for XLS, CSV, TXT which can be exported to CSV, 
 * Out of core functionality to process large files
 * Export to CSV, parquet, SQL, pandas dataframe
 
+## Installation
+
+Latest published version `pip install d6tstack`. Additoinal requirements:
+* `d6tstack[psql]`: for pandas to postgres
+* `d6tstack[mysql]`: for pandas to mysql
+* `d6tstack[xls]`: for excel support
+* `d6tstack[parquet]`: for ingest csv to parquet
+
+Latest dev version from github `pip install git+https://github.com/d6t/d6tstack.git`. 
+
+
 ### Sample Use
 
 ```
@@ -82,27 +93,19 @@ d6tstack.convert_xls.XLStoCSVMultiFile(glob.glob('*.xls'),
 ```
 
 
-## Installation
-
-We recommend using the latest version from github `pip install git+https://github.com/d6t/d6tstack.git`. 
-
-If you cannot install from github, use the latest published version `pip install d6tstack`. For Excel and parquet support, install `d6tstack[xls]` and `d6tstack[parquet]`. Certain database specific function require packages which you will be prompted for as you use them.
-
-
 ## Documentation
 
+*  [SQL examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-sql.ipynb) - Fast loading of CSV to SQL with pandas preprocessing
 *  [CSV examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-csv.ipynb) - Quickly load any type of CSV files
 *  [Excel examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-excel.ipynb) - Quickly extract from Excel to CSV 
 *  [Dask Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-dask.ipynb) - How to use d6tstack to solve Dask input file problems
 *  [Pyspark Examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-pyspark.ipynb) - How to use d6tstack to solve pyspark input file problems
-*  [SQL examples notebook](https://github.com/d6t/d6tstack/blob/master/examples-sql.ipynb) - Fast loading of CSV to SQL with pandas preprocessing
 *  [Function reference docs](http://d6tstack.readthedocs.io/en/latest/py-modindex.html) - Detailed documentation for modules, classes, functions
-*  [www.databolt.tech](https://www.databolt.tech/index-combine.html) - Web app if you don't want to code
 
 ## Faster Data Engineering
 
 Check out other d6t libraries to solve common data engineering problems, including  
-* data ingest, quickly ingest raw data
+* data worfklows,build highly effective data science workflows
 * fuzzy joins, quickly join data
 * data pipes, quickly share and distribute data
 
@@ -112,6 +115,6 @@ And we encourage you to join the Databolt blog to get updates and tips+tricks ht
 
 ## Collecting Errors Messages and Usage statistics
 
-To help us make this library better, it collects anonymous error messages and usage statistics. It works similar to how websites collect data. See [d6tcollect](https://github.com/d6t/d6tcollect) for details including how to disable collection.
+We have put a lot of effort into making this library useful to you. To help us make this library even better, it collects ANONYMOUS error messages and usage statistics. See [d6tcollect](https://github.com/d6t/d6tcollect) for details including how to disable collection. Collection is asynchronous and doesn't impact your code in any way.
 
-It might not catch all errors so if you run into any problems, please raise an issue on github.
+It may not catch all errors so if you run into any problems or have any questions, please raise an issue on github.
