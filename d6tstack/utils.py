@@ -85,6 +85,8 @@ def pd_to_psql(df, uri, table_name, schema_name=None, if_exists='fail', sep=',')
 
     if not 'psycopg2' in uri:
         raise ValueError('need to use psycopg2 uri eg postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest. install with `pip install psycopg2-binary`')
+    table_name = table_name.lower()
+    schema_name = schema_name.lower()
 
     import sqlalchemy
     import io
@@ -127,6 +129,8 @@ def pd_to_mysql(df, uri, table_name, if_exists='fail', tmpfile='mysql.csv', sep=
     """
     if not 'mysql+mysqlconnector' in uri:
         raise ValueError('need to use mysql+mysqlconnector uri eg mysql+mysqlconnector://testusr:testpwd@localhost/testdb. install with `pip install mysql-connector`')
+    table_name = table_name.lower()
+    schema_name = schema_name.lower()
 
     import sqlalchemy
 
@@ -164,6 +168,8 @@ def pd_to_mssql(df, uri, table_name, schema_name=None, if_exists='fail', tmpfile
     """
     if not 'mssql+pymssql' in uri:
         raise ValueError('need to use mssql+pymssql uri (conda install -c prometeia pymssql)')
+    table_name = table_name.lower()
+    schema_name = schema_name.lower()
 
     warnings.warn('`.pd_to_mssql()` is experimental, if any problems please raise an issue on https://github.com/d6t/d6tstack/issues or make a pull request')
     import sqlalchemy
