@@ -74,7 +74,7 @@ def pd_to_psql(df, uri, table_name, schema_name=None, if_exists='fail', sep=',')
         df (dataframe): pandas dataframe
         uri (str): postgres psycopg2 sqlalchemy database uri
         table_name (str): table to store data in
-        schema_name (str): name of schema to write to
+        schema_name (str): name of schema in db to write to
         if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
         sep (str): separator for temp file, eg ',' or '\t'
 
@@ -86,8 +86,9 @@ def pd_to_psql(df, uri, table_name, schema_name=None, if_exists='fail', sep=',')
     if not 'psycopg2' in uri:
         raise ValueError('need to use psycopg2 uri eg postgresql+psycopg2://psqlusr:psqlpwdpsqlpwd@localhost/psqltest. install with `pip install psycopg2-binary`')
     table_name = table_name.lower()
-    schema_name = schema_name.lower()
-
+    if schema_name:
+        schema_name = schema_name.lower()
+   
     import sqlalchemy
     import io
 
@@ -158,7 +159,7 @@ def pd_to_mssql(df, uri, table_name, schema_name=None, if_exists='fail', tmpfile
         df (dataframe): pandas dataframe
         uri (str): mysql mysqlconnector sqlalchemy database uri
         table_name (str): table to store data in
-        schema_name (str): name of schema to write to
+        schema_name (str): name of schema in db to write to
         if_exists (str): {‘fail’, ‘replace’, ‘append’}, default ‘fail’. See `pandas.to_sql()` for details
         tmpfile (str): filename for temporary file to load from
 
@@ -169,7 +170,8 @@ def pd_to_mssql(df, uri, table_name, schema_name=None, if_exists='fail', tmpfile
     if not 'mssql+pymssql' in uri:
         raise ValueError('need to use mssql+pymssql uri (conda install -c prometeia pymssql)')
     table_name = table_name.lower()
-    schema_name = schema_name.lower()
+    if schema_name:
+        schema_name = schema_name.lower()
 
     warnings.warn('`.pd_to_mssql()` is experimental, if any problems please raise an issue on https://github.com/d6t/d6tstack/issues or make a pull request')
     import sqlalchemy
