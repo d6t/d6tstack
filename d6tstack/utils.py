@@ -112,7 +112,7 @@ def pd_to_psql(df, uri, table_name, schema_name=None, if_exists='fail', sep=',')
 
 
 @d6tcollect.collect
-def pd_to_mysql(df, uri, table_name, if_exists='fail', tmpfile='mysql.csv', sep=','):
+def pd_to_mysql(df, uri, table_name, if_exists='fail', tmpfile='mysql.csv', sep=',', newline='\n'):
     """
     Load dataframe into a sql table using native postgres LOAD DATA LOCAL INFILE.
 
@@ -140,9 +140,10 @@ def pd_to_mysql(df, uri, table_name, if_exists='fail', tmpfile='mysql.csv', sep=
 
     logger = PrintLogger()
     logger.send_log('creating ' + tmpfile, 'ok')
-    df.to_csv(tmpfile, na_rep='\\N', index=False, sep=sep)
+    with open(tmpfile, mode='w', newline=newline) as fhandle:
+        df.to_csv(fhandle, na_rep='\\N', index=False, sep=sep)
     logger.send_log('loading ' + tmpfile, 'ok')
-    sql_load = "LOAD DATA LOCAL INFILE '{}' INTO TABLE {} FIELDS TERMINATED BY '{}' IGNORE 1 LINES;".format(tmpfile, table_name, sep)
+    sql_load = "LOAD DATA LOCAL INFILE '{}' INTO TABLE {} FIELDS TERMINATED BY '{}' LINES TERMINATED BY '{}' IGNORE 1 LINES;".format(tmpfile, table_name, sep, newline)
     sql_engine.execute(sql_load)
 
     os.remove(tmpfile)

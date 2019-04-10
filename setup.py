@@ -9,7 +9,7 @@ extras = {
 
 setup(
     name='d6tstack',
-    version='0.1.7',
+    version='0.1.9',
     packages=['d6tstack'],
     url='https://github.com/d6t/d6tstack',
     license='MIT',
