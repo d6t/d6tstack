@@ -9,7 +9,10 @@ import ntpath
 import openpyxl
 import xlrd
 
-from openpyxl.utils import coordinate_from_string
+try:
+    from openpyxl.utils.cell import coordinate_from_string
+except:
+    from openpyxl.utils import coordinate_from_string
 from d6tstack.helpers import compare_pandas_versions, check_valid_xls
 
 import d6tcollect
