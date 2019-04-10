@@ -23,8 +23,7 @@ Latest published version `pip install d6tstack`. Additoinal requirements:
 * `d6tstack[xls]`: for excel support
 * `d6tstack[parquet]`: for ingest csv to parquet
 
-Latest dev version from github `pip install git+https://github.com/d6t/d6tstack.git`. 
-
+Latest dev version from github `pip install git+https://github.com/d6t/d6tstack.git`  
 
 ### Sample Use
 

@@ -131,8 +131,6 @@ def pd_to_mysql(df, uri, table_name, if_exists='fail', tmpfile='mysql.csv', sep=
     if not 'mysql+mysqlconnector' in uri:
         raise ValueError('need to use mysql+mysqlconnector uri eg mysql+mysqlconnector://testusr:testpwd@localhost/testdb. install with `pip install mysql-connector`')
     table_name = table_name.lower()
-    if schema_name:
-        schema_name = schema_name.lower()
 
     import sqlalchemy
 
