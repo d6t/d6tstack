@@ -41,12 +41,15 @@ d6tstack.utils.pd_to_mssql(df, 'mssql+pymssql://usr:pwd@localhost/db', 'tablenam
 import glob
 >>> c = d6tstack.combine_csv.CombinerCSV(glob.glob('data/*.csv'))
 
+# show columns of each file
+>>> c.columns()
+
 # quick check if all files have consistent columns
 >>> c.is_all_equal()
 False
 
 # show which files have missing columns
->>> c.is_col_present()
+>>> c.is_column_present()
    filename  cost  date profit profit2 sales
 0  feb.csv  True  True   True   False  True
 2  mar.csv  True  True   True    True  True
@@ -68,6 +71,9 @@ False
 
 # to come: check if columns match database
 >>> c.is_columns_match_db('postgresql+psycopg2://usr:pwd@localhost/db', 'tablename')
+
+# create csv with first nrows_preview rows of each file
+>>> c.to_csv_head()
 
 # export to csv, parquet, sql. Out of core with optimized fast imports for postgres and mysql
 >>> c.to_pandas()

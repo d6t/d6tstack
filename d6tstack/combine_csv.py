@@ -3,7 +3,7 @@ import pandas as pd
 pd.set_option('display.expand_frame_repr', False)
 from scipy.stats import mode
 import warnings
-import ntpath
+import ntpath, pathlib
 import copy
 import itertools
 import os
@@ -131,14 +131,14 @@ class CombinerCSV(object, metaclass=d6tcollect.Collect):
         read_csv_params['chunksize'] = None
 
         # read nrows of every file
-        dfl_all = []
+        self.dfl_all = []
         for fname in self.fname_list:
             # todo: make sure no nrows param in self.read_csv_params
             df = pd.read_csv(fname, **read_csv_params)
-            dfl_all.append(df)
+            self.dfl_all.append(df)
 
         # process columns
-        dfl_all_col = [df.columns.tolist() for df in dfl_all]
+        dfl_all_col = [df.columns.tolist() for df in self.dfl_all]
         col_files = dict(zip(self.fname_list, dfl_all_col))
         col_common = list_common(list(col_files.values()))
         col_all = list_unique(list(col_files.values()))
@@ -217,6 +217,15 @@ class CombinerCSV(object, metaclass=d6tcollect.Collect):
         self._sniff_available()
         return self.is_column_present()[self.sniff_results['columns_unique']]
 
+    def columns_unique(self):
+        """
+        Shows unique columns by file
+
+        Returns:
+             dataframe: boolean values for column presence in each file
+        """
+        self.columns_unique()
+
     def is_column_present_common(self):
         """
         Shows common columns by file        
@@ -226,6 +235,35 @@ class CombinerCSV(object, metaclass=d6tcollect.Collect):
         """
         self._sniff_available()
         return self.is_column_present()[self.sniff_results['columns_common']]
+
+    def columns_common(self):
+        """
+        Shows common columns by file        
+
+        Returns:
+             dataframe: boolean values for column presence in each file
+        """
+        return self.is_column_present_common()
+
+    def columns(self):
+        """
+        Shows columns by file        
+
+        Returns:
+             dict: filename, columns
+        """
+        self._sniff_available()
+        return self.sniff_results['files_columns']
+
+    def head(self):
+        """
+        Shows preview rows for each file
+
+        Returns:
+             dict: filename, dataframe
+        """
+        self._sniff_available()
+        return dict(zip(self.fname_list,self.dfl_all))
 
     def _columns_reindex_prep(self):
 
@@ -341,6 +379,29 @@ class CombinerCSV(object, metaclass=d6tcollect.Collect):
         self._combine_preview_available()
 
         return write_params
+
+    def to_csv_head(self, output_dir=None, write_params={}):
+        """
+        Save `nrows_preview` header rows as individual files
+
+        Args:
+            output_dir (str): directory to save files in. If not given save in the same directory as the original file
+            write_params (dict): additional params to pass to `pandas.to_csv()`
+
+        Returns:
+            list: list of filenames of processed files
+        """
+
+        write_params = self._to_csv_prep(write_params)
+
+        fnamesout = []
+        for fname, dfg in dict(zip(self.fname_list,self.dfl_all)).items():
+            filename = f'{fname}-head.csv'
+            filename = filename if output_dir is None else str(pathlib.Path(output_dir)/filename)
+            dfg.to_csv(filename, **write_params)
+            fnamesout.append(filename)
+
+        return fnamesout
 
     def to_csv_align(self, output_dir=None, output_prefix='d6tstack-', write_params={}):
         """
