@@ -17,7 +17,7 @@ Quickly ingest raw files. Works for XLS, CSV, TXT which can be exported to CSV, 
 
 ## Installation
 
-Latest published version `pip install d6tstack`. Additoinal requirements:
+Latest published version `pip install d6tstack`. Additional requirements:
 * `d6tstack[psql]`: for pandas to postgres
 * `d6tstack[mysql]`: for pandas to mysql
 * `d6tstack[xls]`: for excel support
