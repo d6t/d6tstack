@@ -98,15 +98,17 @@ def pd_to_psql(df, uri, table_name, schema_name=None, if_exists='fail', sep=',')
         sql_engine = sqlalchemy.create_engine(uri)
     sql_cnxn = sql_engine.raw_connection()
     cursor = sql_cnxn.cursor()
+    try:
+        df[:0].to_sql(table_name, sql_engine, schema=schema_name, if_exists=if_exists, index=False)
 
-    df[:0].to_sql(table_name, sql_engine, schema=schema_name, if_exists=if_exists, index=False)
-
-    fbuf = io.StringIO()
-    df.to_csv(fbuf, index=False, header=False, sep=sep)
-    fbuf.seek(0)
-    cursor.copy_from(fbuf, table_name, sep=sep, null='')
-    sql_cnxn.commit()
-    cursor.close()
+        fbuf = io.StringIO()
+        df.to_csv(fbuf, index=False, header=False, sep=sep)
+        fbuf.seek(0)
+        cursor.copy_from(fbuf, table_name, sep=sep, null='')
+        sql_cnxn.commit()
+    finally:
+        cursor.close()
+        sql_cnxn.close()
 
     return True
 
