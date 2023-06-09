@@ -62,7 +62,7 @@ def pd_readsql_table_from_sqlengine(uri, table_name, schema_name=None, connect_a
 
     """
 
-    return pd_readsql_query_from_sqlengine(uri, "SELECT * FROM {};".fromat(table_name), schema_name=schema_name, connect_args=connect_args)
+    return pd_readsql_query_from_sqlengine(uri, "SELECT * FROM {};".format(table_name), schema_name=schema_name, connect_args=connect_args)
 
 
 @d6tcollect.collect
